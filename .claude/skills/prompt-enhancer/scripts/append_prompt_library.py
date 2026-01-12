@@ -138,10 +138,43 @@ def entry_markdown(
     return "\n".join(lines)
 
 
+def validate_library_path(path: str) -> str:
+    """Validate that the library path is safe and within allowed boundaries."""
+    # Resolve to absolute path
+    resolved = os.path.realpath(path)
+
+    # Get allowed base directories
+    cwd = os.path.realpath(os.getcwd())
+    home = os.path.realpath(os.path.expanduser("~"))
+
+    # Check if path is under current working directory or home directory
+    if not (resolved.startswith(cwd) or resolved.startswith(home)):
+        raise SystemExit(
+            f"Library path must be under project root or home directory. "
+            f"Got: {resolved}"
+        )
+
+    # Prevent writing to sensitive locations
+    sensitive_dirs = [
+        "/etc", "/usr", "/bin", "/sbin", "/var", "/tmp",
+        os.path.join(home, ".ssh"),
+        os.path.join(home, ".gnupg"),
+        os.path.join(home, ".aws"),
+    ]
+    for sensitive in sensitive_dirs:
+        if resolved.startswith(os.path.realpath(sensitive)):
+            raise SystemExit(f"Cannot write to sensitive directory: {sensitive}")
+
+    return resolved
+
+
 def main() -> None:
     library_path = os.environ.get("PROMPT_LIBRARY_PATH")
     if not library_path:
         raise SystemExit("PROMPT_LIBRARY_PATH env var is required")
+
+    # Validate path before use
+    library_path = validate_library_path(library_path)
 
     payload = read_payload()
 
