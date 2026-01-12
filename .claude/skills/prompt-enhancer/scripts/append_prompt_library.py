@@ -9,12 +9,41 @@ from typing import Any
 
 
 REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # OpenAI API keys
     (re.compile(r"sk-[A-Za-z0-9]{10,}"), "sk-[REDACTED]"),
+    # Generic API key assignments
     (re.compile(r"(?i)api_key\s*=\s*['\"][^'\"]+['\"]"), 'api_key="[REDACTED]"'),
+    # Bearer tokens
     (
         re.compile(r"(?i)authorization\s*:\s*bearer\s+\S+"),
         "Authorization: Bearer [REDACTED]",
     ),
+    # GitHub tokens (ghp_, gho_, ghu_, ghs_, ghat_)
+    (re.compile(r"ghp_[A-Za-z0-9]{36,}"), "ghp_[REDACTED]"),
+    (re.compile(r"gho_[A-Za-z0-9]{36,}"), "gho_[REDACTED]"),
+    (re.compile(r"ghu_[A-Za-z0-9]{36,}"), "ghu_[REDACTED]"),
+    (re.compile(r"ghs_[A-Za-z0-9]{36,}"), "ghs_[REDACTED]"),
+    (re.compile(r"ghat_[A-Za-z0-9]{36,}"), "ghat_[REDACTED]"),
+    # AWS Access Key IDs
+    (re.compile(r"AKIA[A-Z0-9]{16}"), "AKIA[REDACTED]"),
+    # AWS Secret Access Keys (40 char base64)
+    (re.compile(r"(?i)aws_secret_access_key\s*=\s*['\"][^'\"]{40}['\"]"), 'aws_secret_access_key="[REDACTED]"'),
+    # Google API keys
+    (re.compile(r"AIza[A-Za-z0-9_-]{35}"), "AIza[REDACTED]"),
+    # Anthropic API keys
+    (re.compile(r"sk-ant-[A-Za-z0-9_-]{40,}"), "sk-ant-[REDACTED]"),
+    # Slack tokens
+    (re.compile(r"xox[baprs]-[A-Za-z0-9-]+"), "xox[REDACTED]"),
+    # Generic password patterns
+    (re.compile(r"(?i)password\s*=\s*['\"][^'\"]+['\"]"), 'password="[REDACTED]"'),
+    # MongoDB connection strings
+    (re.compile(r"mongodb(\+srv)?://[^\s]+"), "mongodb://[REDACTED]"),
+    # PostgreSQL/MySQL connection strings
+    (re.compile(r"(?i)(postgres|mysql|mariadb)://[^\s]+"), "[DATABASE_URL_REDACTED]"),
+    # Private keys (PEM format)
+    (re.compile(r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(RSA\s+)?PRIVATE\s+KEY-----"), "[PRIVATE_KEY_REDACTED]"),
+    # JWT tokens (basic pattern)
+    (re.compile(r"eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*"), "[JWT_REDACTED]"),
 ]
 
 
