@@ -7,13 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Project structure: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`
-- GitHub templates: bug report, feature request, pull request
-- `assets/` directory for future demo materials
+- `SECURITY.md` with vulnerability reporting policy and response SLAs
+- `MAINTAINERS.md` with maintainer info and decision-making process
+- GitHub Actions CI workflow with Python linting, testing, and markdown checks
+- Comprehensive pytest test suite with 25+ test cases
+- `pyproject.toml` for Python package management
+- GitHub labels configuration (`.github/labels.yml`)
+- Log rotation: automatic compression when logs exceed 1MB (up to 5 backups)
+- Expanded secret redaction patterns (15+ patterns including GitHub tokens, AWS keys, JWTs)
+- Path validation to prevent directory traversal attacks
 
 ### Changed
-- README rewritten with unified "Chiron Prompt Enhancer" branding
-- Fixed output format documentation to match actual skill behavior
+- README updated with CI badge, Python version badge, and new features
+- Project structure updated with new files and directories
+
+### Security
+- Added path validation to prevent writing to sensitive directories
+- Expanded redaction patterns to cover more secret types
+- Added PEM private key detection and redaction
 
 ---
 
