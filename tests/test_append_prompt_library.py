@@ -195,11 +195,17 @@ class TestValidateLibraryPath:
     """Tests for validate_library_path function."""
 
     def test_valid_path_in_cwd(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with mock.patch("os.getcwd", return_value=tmpdir):
-                path = os.path.join(tmpdir, "prompt-history", "PROMPT_LIBRARY.md")
+        # Use home directory subdirectory to avoid macOS /var symlink issues
+        home = os.path.expanduser("~")
+        test_dir = os.path.join(home, ".chiron-test-temp")
+        os.makedirs(test_dir, exist_ok=True)
+        try:
+            with mock.patch("os.getcwd", return_value=test_dir):
+                path = os.path.join(test_dir, "prompt-history", "PROMPT_LIBRARY.md")
                 result = validate_library_path(path)
                 assert result == os.path.realpath(path)
+        finally:
+            os.rmdir(test_dir)
 
     def test_valid_path_in_home(self):
         home = os.path.expanduser("~")
