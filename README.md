@@ -1,20 +1,35 @@
-# Prompt Enhancer
+<div align="center">
+
+# 🏹 Chiron Prompt Enhancer
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.txt)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-purple.svg)]()
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> **Transform basic prompts into powerful, AI-optimized queries.**
+**Transform basic prompts into powerful, AI-optimized queries — then execute the work.**
+
+将基础提示词转化为强大、精准的 AI 优化查询 — 并自动执行任务。
+
+[Installation](#installation) · [Quick Start](#quick-start) · [Strategies](#optimization-strategies) · [Contributing](CONTRIBUTING.md)
+
+</div>
+
+---
+
+## 💡 Why "Chiron"?
+
+> In Greek mythology, **Chiron** (Χείρων) was the wisest of all centaurs — a mentor to heroes like Achilles, Hercules, and Jason. Unlike other centaurs, Chiron was known for his intelligence, teaching, and ability to elevate others to greatness.
 >
-> 将基础提示词转化为强大、精准的 AI 优化查询。
+> This skill embodies that spirit: **taking your rough ideas and elevating them to expert-grade specifications**.
 
 ---
 
 ## Overview
 
-Prompt Enhancer is an open-source **Claude Code project skill** that upgrades underspecified requests into an expert-grade spec and then **executes the work**. It also keeps an optional, local prompt history so users can reuse what worked.
+Chiron Prompt Enhancer is an open-source **Claude Code project skill** that upgrades underspecified requests into an expert-grade spec and then **executes the work**. It also keeps an optional, local prompt history so users can reuse what worked.
 
-## How It Works
+### How It Works
 
 ```mermaid
 flowchart LR
@@ -37,6 +52,37 @@ Default behavior is **Augment → Execute**. Use `prompt-only` if you want just 
 | **Smart auto-detection** | Picks the right strategy for the task and language |
 | **Bilingual support** | Works seamlessly with English and Chinese (中英双语) |
 | **Prompt library (optional)** | Logs upgrades to `prompt-history/PROMPT_LIBRARY.md` (disable with `no-log`) |
+
+---
+
+## Installation
+
+### For Claude Code Users
+
+Add this skill to your Claude Code project:
+
+```bash
+# Navigate to your project root
+cd your-project
+
+# Clone into .claude/skills directory
+mkdir -p .claude/skills
+git clone https://github.com/EdwinjJ1/chiron-prompt.git .claude/skills/chiron-prompt
+```
+
+### Global Installation (All Projects)
+
+```bash
+# Clone to your global skills directory
+mkdir -p ~/.claude/skills
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.claude/skills/chiron-prompt
+```
+
+### Manual Installation
+
+1. Download or clone this repository
+2. Copy the `SKILL.md` file to your `.claude/skills/prompt-enhancer/` directory
+3. Restart Claude Code to activate the skill
 
 ---
 
@@ -63,6 +109,14 @@ Write a function to sort data
 **What you get (default):** an upgraded spec + the implemented function.
 
 If you only want the upgraded prompt/spec (no execution), prefix with `prompt-only`.
+
+### Controls
+
+| Control | Description |
+|---------|-------------|
+| `prompt-only` | Output only the upgraded spec (no execution) |
+| `show-spec` | Include the augmented spec in a collapsed `<details>` block |
+| `no-log` | Don't write to `prompt-history/PROMPT_LIBRARY.md` |
 
 ---
 
@@ -239,27 +293,6 @@ You can also explicitly request a strategy:
 
 ---
 
-## Output Format
-
-Every optimization includes:
-
-```markdown
-## Optimized Prompt (Strategy: [Name])
-
-[The enhanced prompt]
-
----
-
-**Key Improvements:**
-- What was added
-- Why it helps
-- What changed from original
-
-**Alternative Strategies:** [Other strategies that might work]
-```
-
----
-
 ## Background
 
 This open-source skill is adapted from **[Axon](https://promptenhenceraxon.top)**, a professional desktop application for AI prompt engineering. While Axon provides a complete desktop experience with advanced features like:
@@ -276,50 +309,45 @@ This skill brings the core optimization intelligence directly into Claude Code c
 ## Project Structure
 
 ```
-prompt-enhancer-skill/
-├── README.md           # This file
-├── SKILL.md            # Skill documentation (design + behavior)
-├── examples.md         # Examples (prompt-only + agentic execution)
-├── tests.md            # Test cases and validation
-├── LICENSE.txt         # MIT License
+chiron-prompt/
+├── README.md                 # This file
+├── SKILL.md                  # Skill documentation (design + behavior)
+├── CONTRIBUTING.md           # Contribution guidelines
+├── CODE_OF_CONDUCT.md        # Community standards
+├── CHANGELOG.md              # Version history
+├── LICENSE.txt               # MIT License
+├── examples.md               # Examples (prompt-only + agentic execution)
+├── tests.md                  # Test cases and validation
+├── assets/                   # Demo materials
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md
+│   │   └── feature_request.md
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── .claude/
 │   └── skills/
 │       └── prompt-enhancer/
-│           ├── SKILL.md  # Claude Code project skill (runtime)
+│           ├── SKILL.md      # Claude Code project skill (runtime)
 │           └── scripts/
 │               └── append_prompt_library.py
 ├── prompt-history/
 │   └── PROMPT_LIBRARY.md
 └── reference/
-    └── axon-implementation-notes.md  # Technical reference
+    └── axon-implementation-notes.md
 ```
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Here's how you can help:
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) first.
 
-1. **Report Issues**: Found a bug or have a suggestion? [Open an issue](../../issues)
-2. **Submit Examples**: Share interesting prompt transformations
-3. **Improve Strategies**: Suggest new optimization approaches
-4. **Documentation**: Help improve clarity and coverage
+### Quick Links
 
-### Development
-
-```bash
-# Clone the repository
-git clone https://github.com/[username]/prompt-enhancer-skill.git
-
-# Review the skill docs
-cat SKILL.md
-
-# (Claude Code) Project skill is under:
-# .claude/skills/prompt-enhancer/SKILL.md
-
-# Check examples
-cat examples.md
-```
+- 🐛 [Report a Bug](.github/ISSUE_TEMPLATE/bug_report.md)
+- ✨ [Request a Feature](.github/ISSUE_TEMPLATE/feature_request.md)
+- 📖 [View Examples](examples.md)
+- 🧪 [Run Tests](tests.md)
 
 ---
 
@@ -341,6 +369,6 @@ This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.t
 
 **[Try Axon Desktop App](https://promptenhenceraxon.top)** · **[Report Bug](../../issues)** · **[Request Feature](../../issues)**
 
-Made with care for better AI interactions
+Made with care for better AI interactions ✨
 
 </div>
