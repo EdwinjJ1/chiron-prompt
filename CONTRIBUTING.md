@@ -94,7 +94,39 @@ chiron-prompt/
 ### Running Tests
 
 ```bash
-# Test the logging script
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run the full test suite
+pytest tests/ -v
+
+# Run with coverage report
+pytest tests/ -v --cov=.claude/skills/prompt-enhancer/scripts --cov-report=html
+
+# Run a specific test file
+pytest tests/test_append_prompt_library.py -v
+
+# Run tests matching a pattern
+pytest tests/ -v -k "redact"
+```
+
+### Linting
+
+```bash
+# Check code style
+ruff check .claude/skills/prompt-enhancer/scripts/
+
+# Auto-fix issues
+ruff check --fix .claude/skills/prompt-enhancer/scripts/
+
+# Format code
+ruff format .claude/skills/prompt-enhancer/scripts/
+```
+
+### Manual Testing
+
+```bash
+# Test the logging script directly
 echo '{"original_request": "test", "upgrade_summary": ["test"]}' | \
   PROMPT_LIBRARY_PATH=./test-output.md \
   python3 .claude/skills/prompt-enhancer/scripts/append_prompt_library.py
@@ -154,3 +186,4 @@ Feel free to open an issue with the `question` label or reach out to the maintai
 ---
 
 Thank you for contributing!
+/
