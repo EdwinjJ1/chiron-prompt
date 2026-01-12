@@ -31,17 +31,43 @@
 
 Chiron Prompt Enhancer is an open-source **Claude Code project skill** that upgrades underspecified requests into an expert-grade spec and then **executes the work**. It also keeps an optional, local prompt history so users can reuse what worked.
 
-### How It Works
+### System Architecture
+
+Unlike simple prompt rewriters, Chiron uses a multi-stage intelligent pipeline:
 
 ```mermaid
-flowchart LR
-    A["📝 Your Request"] --> B["⚡ Augment\n(Upgrade intent)"]
-    B --> C["🛠 Execute\n(Do the work)"]
-    C --> D["📦 Deliver\n(Final result)"]
-    D --> E["🗂 Log\n(PROMPT_LIBRARY)"]
+graph TD
+    %% Nodes
+    User[👤 Your Request] --> Analyzer{🧠 Smart Analyzer<br/>(Intent & Language)}
+
+    subgraph "🏹 Core Intelligence"
+        direction TB
+        Analyzer -->|Explain/Teach| Edu[📚 Educational]
+        Analyzer -->|Analyze/Data| Ana[📊 Analytical]
+        Analyzer -->|Build/How-To| Act[🚀 Action-Oriented]
+        Analyzer -->|Idea/Brainstorm| Cre[🎨 Creative]
+        Analyzer -->|Business| Pro[💼 Professional]
+        Analyzer -->|Verbose| Con[✂️ Concise]
+        Analyzer -->|Default| Det[📋 Detailed]
+    end
+
+    Edu & Ana & Act & Cre & Pro & Con & Det --> Spec[✨ Enhanced Spec]
+
+    Spec --> Router{⚙️ Execution Logic}
+
+    subgraph "🤖 Agentic Layer"
+        Router -->|Default| Agent[Task Executor]
+        Agent -->|Write Code/Docs| Tools[🛠️ Tool Use]
+        Tools --> Result[📦 Final Deliverable]
+    end
+
+    Router -->|prompt-only| SpecOutput[📝 Spec Output]
+
+    Result & SpecOutput --> Logger{🔒 Security Log}
+    Logger -->|Redact Secrets| Library[💾 PROMPT_LIBRARY.md]
 ```
 
-Default behavior is **Augment → Execute**. Use `prompt-only` if you want just the upgraded prompt/spec.
+The system automatically detects your intent (e.g., distinguishing between "learning" vs. "doing") and routes it to the optimal enhancement strategy.
 
 ---
 
@@ -56,6 +82,18 @@ Default behavior is **Augment → Execute**. Use `prompt-only` if you want just 
 | **Prompt library (optional)** | Logs upgrades to `prompt-history/PROMPT_LIBRARY.md` (disable with `no-log`) |
 | **Security-first logging** | Automatic redaction of 15+ secret patterns (API keys, tokens, passwords) |
 | **Log rotation** | Automatic compression and rotation when logs exceed 1MB |
+
+### 💪 Capabilities Matrix
+
+| Strategy | Ideal Use Case | Intelligence Focus | Agentic Action |
+| :--- | :--- | :--- | :--- |
+| **📚 Educational** | Learning concepts, tutorials | Pedagogy, Analogies, Progressive disclosure | Explains, Generates examples, Creates quizzes |
+| **📊 Analytical** | Data review, decision making | Logic, Criteria evaluation, Evidence weighting | Analyzes data, Compares options, Writes reports |
+| **🚀 Action-Oriented** | Implementation, setup guides | Sequencing, Dependency checking, Verification | Writes code, Runs commands, Verifies installation |
+| **🎨 Creative** | Brainstorming, ideation | Divergent thinking, Domain fusion, Novelty | Generates lists, Drafts content, Explores patterns |
+| **💼 Professional** | Business docs, emails | Tone calibration, Stakeholder awareness, Formatting | Drafts emails, Creates slides content, Formats docs |
+| **✂️ Concise** | Quick summaries, code review | Information density, Noise reduction, Essentialism | Summarizes, Refactors code, Extracts key points |
+| **📋 Detailed** | Complex specs, requirements | Completeness, Edge-case coverage, Context injection | Writes full specs, Documents architecture, Plans tasks |
 
 ---
 
