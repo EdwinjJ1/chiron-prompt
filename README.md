@@ -12,20 +12,19 @@
 
 ## Overview
 
-Prompt Enhancer is an open-source Claude Code skill that intelligently analyzes and optimizes your prompts for better AI responses. Whether you're writing code, creating content, or solving complex problems, this tool helps you craft prompts that yield more accurate, relevant, and comprehensive results.
+Prompt Enhancer is an open-source **Claude Code project skill** that upgrades underspecified requests into an expert-grade spec and then **executes the work**. It also keeps an optional, local prompt history so users can reuse what worked.
 
 ## How It Works
 
 ```mermaid
 flowchart LR
-    A["📝 Your Prompt"] --> B{"🔍 Strategy<br/>Detection"}
-    B --> C["✨ Optimized<br/>Prompt"]
-    C --> D{"👤 Your<br/>Feedback"}
-    D -->|"Iterate"| B
-    D -->|"Accept"| E["✓ Done"]
+    A["📝 Your Request"] --> B["⚡ Augment\n(Upgrade intent)"]
+    B --> C["🛠 Execute\n(Do the work)"]
+    C --> D["📦 Deliver\n(Final result)"]
+    D --> E["🗂 Log\n(PROMPT_LIBRARY)"]
 ```
 
-The skill analyzes your input, automatically selects the most appropriate optimization strategy, and transforms your prompt while preserving your original intent.
+Default behavior is **Augment → Execute**. Use `prompt-only` if you want just the upgraded prompt/spec.
 
 ---
 
@@ -33,11 +32,11 @@ The skill analyzes your input, automatically selects the most appropriate optimi
 
 | Feature | Description |
 |---------|-------------|
-| **7 Optimization Strategies** | From concise to creative, choose the approach that fits your task |
-| **Smart Auto-Detection** | Automatically recommends the best strategy based on your prompt |
-| **Bilingual Support** | Works seamlessly with English and Chinese (中英双语) |
-| **Iterative Refinement** | Easy to adjust and re-optimize until perfect |
-| **Visual Comparison** | Clear before/after presentation with improvement explanations |
+| **Agentic execution** | Upgrades the request and completes the task (not just prompt rewriting) |
+| **7 strategies** | Concise / Detailed / Creative / Professional / Analytical / Educational / Action-Oriented |
+| **Smart auto-detection** | Picks the right strategy for the task and language |
+| **Bilingual support** | Works seamlessly with English and Chinese (中英双语) |
+| **Prompt library (optional)** | Logs upgrades to `prompt-history/PROMPT_LIBRARY.md` (disable with `no-log`) |
 
 ---
 
@@ -56,23 +55,14 @@ Simply use natural language to activate the skill:
 
 ### Basic Example
 
-**Before:**
+**Request:**
 ```
 Write a function to sort data
 ```
 
-**After (Detailed Strategy):**
-```
-Write a JavaScript function that sorts an array of objects by a specified property.
+**What you get (default):** an upgraded spec + the implemented function.
 
-Requirements:
-- Handle nested properties (e.g., 'user.address.city')
-- Support both ascending and descending order
-- Include TypeScript type definitions
-- Add error handling for invalid inputs
-- Provide usage examples
-- Target time complexity: O(n log n)
-```
+If you only want the upgraded prompt/spec (no execution), prefix with `prompt-only`.
 
 ---
 
@@ -283,65 +273,23 @@ This skill brings the core optimization intelligence directly into Claude Code c
 
 ---
 
-## AI Model Setup
-
-This project includes setup for using AI models with the Antigravity proxy.
-
-### Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-### Available Models
-
-1. **Gemini (gemini-3-pro-high)**
-2. **Claude (claude-opus-4-5-thinking)**
-
-### Test Scripts
-
-- `gemini_test.py` - Test Gemini model
-- `claude_test.py` - Test Claude model
-
-Usage:
-```bash
-python gemini_test.py
-python claude_test.py
-```
-
-### Example Usage
-
-```python
-# Gemini
-import google.generativeai as genai
-genai.configure(
-    api_key="sk-18fb9b5dadcb457787514bc14530212f",
-    transport='rest',
-    client_options={'api_endpoint': 'http://127.0.0.1:8045'}
-)
-
-# Claude
-from anthropic import Anthropic
-client = Anthropic(
-    base_url="http://127.0.0.1:8045",
-    api_key="sk-18fb9b5dadcb457787514bc14530212f"
-)
-```
-
----
-
 ## Project Structure
 
 ```
 prompt-enhancer-skill/
 ├── README.md           # This file
-├── SKILL.md            # Skill configuration and logic
-├── examples.md         # Comprehensive before/after examples
+├── SKILL.md            # Skill documentation (design + behavior)
+├── examples.md         # Examples (prompt-only + agentic execution)
 ├── tests.md            # Test cases and validation
 ├── LICENSE.txt         # MIT License
-├── requirements.txt    # Python dependencies for AI models
-├── gemini_test.py      # Gemini model test script
-├── claude_test.py      # Claude model test script
+├── .claude/
+│   └── skills/
+│       └── prompt-enhancer/
+│           ├── SKILL.md  # Claude Code project skill (runtime)
+│           └── scripts/
+│               └── append_prompt_library.py
+├── prompt-history/
+│   └── PROMPT_LIBRARY.md
 └── reference/
     └── axon-implementation-notes.md  # Technical reference
 ```
@@ -363,8 +311,11 @@ Contributions are welcome! Here's how you can help:
 # Clone the repository
 git clone https://github.com/[username]/prompt-enhancer-skill.git
 
-# Review the skill configuration
+# Review the skill docs
 cat SKILL.md
+
+# (Claude Code) Project skill is under:
+# .claude/skills/prompt-enhancer/SKILL.md
 
 # Check examples
 cat examples.md

@@ -2,6 +2,52 @@
 
 This document contains test cases for validating the prompt-enhancer skill functionality.
 
+Note: the default skill behavior is **agentic execution** (Augment → Execute). Use `prompt-only` when validating prompt transformations in isolation.
+
+---
+
+## Agentic Execution
+
+### Test A1: Augment → Execute → Deliver
+**Input**: "Write a function to sort data"
+
+**Expected Behavior**:
+- Outputs a short upgrade summary (3–6 ✅ bullets)
+- Produces the implemented deliverable (not just a rewritten prompt)
+- Does not include the full augmented spec unless `show-spec`
+
+**Verification**:
+- [ ] Result contains the final deliverable
+- [ ] Upgrade summary is concise
+
+---
+
+### Test A2: Logging enabled by default
+**Input**: any request
+
+**Expected Behavior**:
+- Appends an entry to `prompt-history/PROMPT_LIBRARY.md`
+
+**Verification**:
+- [ ] New `## <timestamp>` entry exists
+
+---
+
+### Test A3: `no-log` disables persistence
+**Input**: "no-log: Write a function to sort data"
+
+**Expected Behavior**:
+- Does not modify `prompt-history/PROMPT_LIBRARY.md`
+
+---
+
+### Test A4: `prompt-only` skips execution
+**Input**: "prompt-only: Write a function to sort data"
+
+**Expected Behavior**:
+- Outputs only the augmented spec/prompt
+- Does not execute or modify files
+
 ---
 
 ## Normal Cases

@@ -1,6 +1,131 @@
 # Prompt Enhancer - Examples
 
-This document contains before/after examples for each of the 7 optimization strategies.
+This document contains examples for each of the 7 optimization strategies, plus **Agentic execution** examples showing the default behavior.
+
+**Important**: The default behavior is **Agentic execution** (Augment → Execute → Deliver → Log). Use `prompt-only` if you only want the optimized prompt/spec without execution.
+
+---
+
+## Agentic Mode Examples (Default Behavior)
+
+### Example 1: Coding Task - "Write a function to sort data"
+
+**User Input**:
+```
+Write a function to sort data
+```
+
+**Expected Output**:
+```
+✅ Added programming language (JavaScript)
+✅ Specified input type (array of objects)
+✅ Added nested property support
+✅ Included TypeScript types and error handling
+✅ Specified performance target (O(n log n))
+
+[The sorting function code here]
+```
+
+**What happened behind the scenes**:
+- Augmented prompt with: language, type safety, edge cases, performance requirements
+- Executed the task: Wrote the actual sorting function
+- Delivered: ✅ summary + code
+- Logged: Entry added to `prompt-history/PROMPT_LIBRARY.md`
+
+**You should NOT see**:
+- ❌ "## Optimized Prompt" header
+- ❌ "**Key Improvements:**" section
+- ❌ "**Alternative Strategies:**" table
+- ❌ "Should I execute this?" or similar confirmation
+
+---
+
+### Example 2: Creative Task - "给我个rap"
+
+**User Input**:
+```
+给我个rap
+```
+
+**Expected Output**:
+```
+✅ Defined topic: AI & technology theme
+✅ Added structure: Intro/Verse/Hook/Outro
+✅ Set style: Modern flow with rhymes
+✅ Specified language: Chinese with English punchlines
+
+[The rap lyrics here]
+```
+
+**What happened behind the scenes**:
+- Augmented: Added topic, structure, style guidelines
+- Executed: Wrote actual rap lyrics
+- Delivered: ✅ summary + lyrics
+
+---
+
+### Example 3: Using `prompt-only` Control
+
+**User Input**:
+```
+Write a function to sort data prompt-only
+```
+
+**Expected Output** (ONLY the augmented spec, no execution):
+```
+## Augmented Specification (Detailed Strategy)
+
+Write a JavaScript function that sorts an array of objects by a specified property.
+
+Requirements:
+- Handle nested properties (e.g., 'user.address.city')
+- Support both ascending and descending order
+- Include TypeScript type definitions
+- Add error handling for invalid inputs
+- Target time complexity: O(n log n)
+- Return a new array (don't mutate original)
+```
+
+---
+
+### Example 4: Using `show-spec` Control
+
+**User Input**:
+```
+给我个rap show-spec
+```
+
+**Expected Output**:
+```
+✅ Defined topic: AI & technology theme
+✅ Added structure: Intro/Verse/Hook/Outro
+✅ Set style: Modern flow with rhymes
+✅ Specified language: Chinese with English punchlines
+
+[The rap lyrics here]
+
+<details>
+<summary>📋 Augmented Spec (Creative Strategy)</summary>
+
+[The augmented prompt that was used internally]
+</details>
+```
+
+---
+
+### Example 5: Simple Command - No Enhancement
+
+**User Input**:
+```
+ls
+```
+
+**Expected Output**:
+```
+[file listing]
+```
+
+**No ✅ summary** - Simple commands execute directly without enhancement.
 
 ---
 

@@ -1,27 +1,34 @@
----
-name: prompt-enhancer
-version: 1.0.0
-description: "Optimize and enhance prompts for better AI responses. Use when users need help refining their prompts to get more specific, effective, or better-structured results from AI."
-license: MIT
+# Prompt Enhancer - 设计文档
+
+> **注意**: 这是设计参考文档，包含策略说明和实现细节。
+> **运行时配置**见 `.claude/skills/prompt-enhancer/SKILL.md`
+
 ---
 
 # Prompt Enhancer
 
 ## Overview
 
-Transform basic prompts into powerful, well-structured prompts that yield better AI responses. This skill helps users think through what they really want, add missing context, and structure their requests for optimal results.
+Prompt Enhancer is an **agentic** Claude Code skill: it upgrades underspecified requests into an expert-grade spec **and then executes the work**.
 
-**Based on**: Axon's prompt optimization system, adapted for Claude Code conversations.
+Pipeline: **Augment → Execute → Deliver → Log**.
+
+**Based on**: Axon's prompt optimization system, adapted for Claude Code and expanded for agentic execution.
 
 ## When to Use This Skill
 
 Use this skill when:
-- User says "optimize my prompt", "enhance this prompt", "make this better"
-- User provides a basic prompt that lacks detail, structure, or context
-- User wants to improve prompt quality for any AI task
-- User is working with prompts for coding, writing, analysis, creative work, or any AI interaction
+- User says "optimize", "enhance", "augment", "make this better" and expects a concrete deliverable
+- User has an actionable task but the request is underspecified
+- User wants best-practice completion (constraints, edge cases, acceptance checks)
 
-**Auto-trigger**: Detects phrases like "optimize prompt", "enhance prompt", "improve prompt", "make this prompt better", "help me write a better prompt", "refine this prompt"
+**Auto-trigger**: Detects phrases like "optimize", "enhance", "augment", "make this better", "refine", "improve" in the context of an actionable request
+
+## Controls
+
+- `prompt-only`: output only the augmented spec/prompt (no execution)
+- `show-spec`: include the augmented spec in a collapsed `<details>` block
+- `no-log`: do not write to `prompt-history/PROMPT_LIBRARY.md`
 
 ## Available Strategies
 
@@ -271,13 +278,10 @@ When the user doesn't specify a strategy, use the following logic to recommend t
 | Very long/verbose prompt (>200 words) | **Concise** | Prompt needs simplification |
 | No specific pattern | **Detailed** (default) | Most prompts benefit from more detail |
 
-### Always:
-1. **Explain why** the strategy was chosen
-2. **Show the optimized prompt** clearly
-3. **Offer alternatives**: "Would you like me to try a different strategy?"
-4. **Be ready to iterate**: "Good, but make it more concise" or "Try creative mode instead"
-
 ## Process
+
+> **注意**: 这些是内部处理步骤，用于指导策略选择和 prompt 增强。
+> 实际运行时行为由 `.claude/skills/prompt-enhancer/SKILL.md` 控制。
 
 ### Step 1: Understand User's Intent
 - Read the original prompt carefully
@@ -288,8 +292,6 @@ When the user doesn't specify a strategy, use the following logic to recommend t
 ### Step 2: Select Strategy
 - If user specified: use that strategy
 - If not specified: apply smart recommendation logic
-- Explain why that strategy fits their use case
-- Offer to try alternative strategies if they want
 
 ### Step 3: Optimize the Prompt
 - Apply strategy-specific optimization guidelines
@@ -297,27 +299,6 @@ When the user doesn't specify a strategy, use the following logic to recommend t
 - Add missing context, structure, or detail
 - Maintain original language (Chinese/English)
 - Ensure output is 1.5-3x length of original
-
-### Step 4: Present Results
-```
-## Optimized Prompt (Strategy: [Strategy Name])
-
-[The optimized prompt text]
-
----
-
-**Key Improvements:**
-- [What was added]
-- [Why it helps]
-- [What changed from original]
-
-**Alternative Strategies**: [List 1-2 other strategies that might work]
-```
-
-### Step 5: Iterate if Needed
-- Be ready to adjust based on feedback
-- Offer alternative strategies
-- Fine-tune specific aspects (too long, too short, different focus)
 
 ## Key Principles
 
