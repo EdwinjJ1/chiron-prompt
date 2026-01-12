@@ -5,6 +5,8 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.txt)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-purple.svg)]()
+[![CI](https://github.com/EdwinjJ1/chiron-prompt/actions/workflows/ci.yml/badge.svg)](https://github.com/EdwinjJ1/chiron-prompt/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **Transform basic prompts into powerful, AI-optimized queries — then execute the work.**
@@ -52,6 +54,8 @@ Default behavior is **Augment → Execute**. Use `prompt-only` if you want just 
 | **Smart auto-detection** | Picks the right strategy for the task and language |
 | **Bilingual support** | Works seamlessly with English and Chinese (中英双语) |
 | **Prompt library (optional)** | Logs upgrades to `prompt-history/PROMPT_LIBRARY.md` (disable with `no-log`) |
+| **Security-first logging** | Automatic redaction of 15+ secret patterns (API keys, tokens, passwords) |
+| **Log rotation** | Automatic compression and rotation when logs exceed 1MB |
 
 ---
 
@@ -316,10 +320,18 @@ chiron-prompt/
 ├── CODE_OF_CONDUCT.md        # Community standards
 ├── CHANGELOG.md              # Version history
 ├── LICENSE.txt               # MIT License
+├── SECURITY.md               # Security policy
+├── MAINTAINERS.md            # Maintainer information
+├── pyproject.toml            # Python package configuration
 ├── examples.md               # Examples (prompt-only + agentic execution)
-├── tests.md                  # Test cases and validation
+├── tests.md                  # Manual test cases
+├── tests/                    # Automated pytest tests
+│   └── test_append_prompt_library.py
 ├── assets/                   # Demo materials
 ├── .github/
+│   ├── workflows/
+│   │   └── ci.yml            # CI/CD pipeline
+│   ├── labels.yml            # Issue labels configuration
 │   ├── ISSUE_TEMPLATE/
 │   │   ├── bug_report.md
 │   │   └── feature_request.md
@@ -338,14 +350,42 @@ chiron-prompt/
 
 ---
 
+## Development
+
+### Running Tests
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ -v --cov=.claude/skills/prompt-enhancer/scripts --cov-report=html
+```
+
+### Linting
+
+```bash
+# Check code style
+ruff check .claude/skills/prompt-enhancer/scripts/
+
+# Format code
+ruff format .claude/skills/prompt-enhancer/scripts/
+```
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) first.
 
 ### Quick Links
 
-- 🐛 [Report a Bug](.github/ISSUE_TEMPLATE/bug_report.md)
-- ✨ [Request a Feature](.github/ISSUE_TEMPLATE/feature_request.md)
+- 🐛 [Report a Bug](https://github.com/EdwinjJ1/chiron-prompt/issues/new?template=bug_report.md)
+- ✨ [Request a Feature](https://github.com/EdwinjJ1/chiron-prompt/issues/new?template=feature_request.md)
+- 🔒 [Security Policy](SECURITY.md)
 - 📖 [View Examples](examples.md)
 - 🧪 [Run Tests](tests.md)
 
