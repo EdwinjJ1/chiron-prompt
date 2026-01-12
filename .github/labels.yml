@@ -1,0 +1,109 @@
+# GitHub Labels Configuration
+# Use with: https://github.com/marketplace/actions/github-labeler
+# Or manually create via GitHub UI / gh cli
+
+# Type Labels
+- name: bug
+  color: d73a4a
+  description: Something isn't working
+
+- name: enhancement
+  color: a2eeef
+  description: New feature or request
+
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to documentation
+
+- name: question
+  color: d876e3
+  description: Further information is requested
+
+# Priority Labels
+- name: priority:critical
+  color: b60205
+  description: Must be fixed ASAP
+
+- name: priority:high
+  color: d93f0b
+  description: High priority issue
+
+- name: priority:medium
+  color: fbca04
+  description: Medium priority issue
+
+- name: priority:low
+  color: 0e8a16
+  description: Low priority issue
+
+# Contributor Labels
+- name: good first issue
+  color: 7057ff
+  description: Good for newcomers
+
+- name: help wanted
+  color: 008672
+  description: Extra attention is needed
+
+# Status Labels
+- name: wontfix
+  color: ffffff
+  description: This will not be worked on
+
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
+
+- name: invalid
+  color: e4e669
+  description: This doesn't seem right
+
+- name: needs-triage
+  color: ededed
+  description: Needs maintainer review
+
+# Component Labels
+- name: area:core
+  color: 1d76db
+  description: Core skill functionality
+
+- name: area:logging
+  color: 1d76db
+  description: Prompt library logging
+
+- name: area:strategies
+  color: 1d76db
+  description: Optimization strategies
+
+- name: area:ci
+  color: 1d76db
+  description: CI/CD and automation
+
+# Strategy Labels
+- name: strategy:concise
+  color: bfdadc
+  description: Related to Concise strategy
+
+- name: strategy:detailed
+  color: bfdadc
+  description: Related to Detailed strategy
+
+- name: strategy:creative
+  color: bfdadc
+  description: Related to Creative strategy
+
+- name: strategy:professional
+  color: bfdadc
+  description: Related to Professional strategy
+
+- name: strategy:analytical
+  color: bfdadc
+  description: Related to Analytical strategy
+
+- name: strategy:educational
+  color: bfdadc
+  description: Related to Educational strategy
+
+- name: strategy:action-oriented
+  color: bfdadc
+  description: Related to Action-Oriented strategy
