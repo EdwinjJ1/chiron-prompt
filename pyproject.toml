@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chiron-prompt-enhancer"
 version = "1.0.0"
-description = "Transform basic prompts into powerful, AI-optimized queries"
+description = "Intelligent agent that transforms basic prompts into expert-grade specifications using smart routing and strategy fusion"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
