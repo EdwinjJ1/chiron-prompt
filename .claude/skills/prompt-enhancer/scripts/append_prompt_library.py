@@ -13,6 +13,7 @@ from typing import Any
 # Log rotation settings
 MAX_LOG_SIZE_BYTES = 1 * 1024 * 1024  # 1 MB
 MAX_BACKUP_COUNT = 5  # Keep up to 5 backup files
+MAX_FIELD_LENGTH = 2000  # Max characters per field to prevent bloat
 
 
 REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
@@ -85,6 +86,13 @@ def ensure_list_of_strings(value: Any, field: str) -> list[str]:
     return value
 
 
+def truncate(text: str, max_len: int = MAX_FIELD_LENGTH) -> str:
+    """Truncate text if it exceeds max_len, adding a suffix."""
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + "\n... [TRUNCATED]"
+
+
 def entry_markdown(
     *,
     timestamp: str,
@@ -94,6 +102,14 @@ def entry_markdown(
     artifacts: list[str],
     result_summary: str,
 ) -> str:
+    # Truncate AI-generated spec to save space
+    augmented_spec = truncate(augmented_spec)
+
+    # Only truncate original request if it's extremely long (e.g. pasted code)
+    # Give user input more room than AI output
+    if len(original_request) > MAX_FIELD_LENGTH:
+        original_request = truncate(original_request)
+
     safe_original = redact(original_request).strip()
     safe_spec = redact(augmented_spec).strip()
     safe_result = redact(result_summary).strip()

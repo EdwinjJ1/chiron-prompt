@@ -24,14 +24,40 @@ sys.path.insert(
 
 from append_prompt_library import (
     MAX_BACKUP_COUNT,
+    MAX_FIELD_LENGTH,
     MAX_LOG_SIZE_BYTES,
     ensure_list_of_strings,
     entry_markdown,
     read_payload,
     redact,
     rotate_log_if_needed,
+    truncate,
     validate_library_path,
 )
+
+
+class TestTruncate:
+    """Tests for the truncate function."""
+
+    def test_short_text_unchanged(self):
+        text = "Short text"
+        assert truncate(text, max_len=100) == text
+
+    def test_exact_length_unchanged(self):
+        text = "x" * 100
+        assert truncate(text, max_len=100) == text
+
+    def test_truncation_adds_suffix(self):
+        text = "x" * 150
+        truncated = truncate(text, max_len=100)
+        assert len(truncated) == 100 + len("\n... [TRUNCATED]")
+        assert truncated.startswith("x" * 100)
+        assert truncated.endswith("\n... [TRUNCATED]")
+
+    def test_default_max_len(self):
+        text = "x" * (MAX_FIELD_LENGTH + 100)
+        truncated = truncate(text)
+        assert len(truncated) == MAX_FIELD_LENGTH + len("\n... [TRUNCATED]")
 
 
 class TestRedact:
