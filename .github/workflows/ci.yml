@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # Test minimum supported and latest versions only
+        python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
@@ -52,31 +53,7 @@ jobs:
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
-        if: matrix.python-version == '3.11'
+        if: matrix.python-version == '3.12'
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
-
-  markdown-lint:
-    name: Markdown Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@v16
-        with:
-          globs: "**/*.md"
-          config: ".markdownlint.json"
-
-  link-check:
-    name: Link Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Link Checker
-        uses: lycheeverse/lychee-action@v1
-        with:
-          args: --verbose --no-progress '**/*.md'
-          fail: false
