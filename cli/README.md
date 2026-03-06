@@ -1,37 +1,86 @@
-# 🏹 Chiron CLI — Optional Integration Layer
+# Chiron CLI Integration Guide
 
-> This directory is the optional integration layer for the main Chiron skill repository.
+Chiron's CLI layer is the part of the project that makes prompt enhancement feel native inside terminal agents.
 
-Use `cli/` only when you want local tooling around the skill:
+If the root [README.md](../README.md) explains what Chiron is, this file explains how the CLI-facing pieces fit together.
 
-- MCP server integration
-- external prompt-enhancement scripts
-- Gemini CLI in-place enhancement experiments
+## What This Layer Is For
 
-If you only want the Chiron skill, return to the root [README.md](../README.md) and skip this directory.
+Use `cli/` when you want one of these:
 
-## What Lives Here
+- repository-aware prompt enhancement from a command
+- a visible `/e` workflow in Gemini CLI or Claude Code
+- in-place input enhancement for patched Gemini CLI
+- a local MCP server that exposes the enhancer as tools
+
+If you only want the reusable skill behavior, go back to [SKILL.md](../SKILL.md).
+
+## The Core Pieces
 
 | Path | Purpose |
 |------|---------|
-| `bin/chiron-enhance.mjs` | External enhancement script for CLI integrations |
+| `bin/chiron-enhance.mjs` | main enhancer entrypoint for CLI integrations |
+| `bin/chiron.mjs` | small CLI wrapper for local server usage |
+| `src/context-engine.mjs` | scans the repo, stack, files, and git context |
+| `src/enhancer.mjs` | builds the enhanced prompt from raw input + context |
 | `src/server.mjs` | MCP server entrypoint |
-| `src/context-engine.mjs` | Project scanning and relevance lookup |
-| `src/enhancer.mjs` | Prompt enhancement logic |
-| `patches/gemini-cli/` | Patch files and notes for Gemini CLI integration |
-| `tui/` | Ink-based standalone TUI experiment |
+| `patches/gemini-cli/` | Gemini CLI patch files and usage notes |
+| `tui/` | standalone TUI experiment |
 
-## Quick Setup (2 minutes)
+## Best Current Workflows
 
-### 1. Install dependencies
+### 1. Gemini CLI `/e`
 
-```bash
-cd cli && npm install
+This repo ships a project-level command in [.gemini/commands/e.toml](../.gemini/commands/e.toml).
+
+```text
+gemini
+/e explain why this auth middleware fails on refresh
 ```
 
-### 2. Add MCP Server to Claude Code
+What happens:
 
-Add to your `~/.claude/settings.json` (global) or project `.claude/settings.json`:
+1. `chiron-enhance.mjs` reads your request.
+2. The context engine scans the repo.
+3. Relevant files are scored and selected.
+4. Chiron builds a stronger prompt.
+5. Gemini continues with the enhanced prompt.
+
+This is the most practical default setup.
+
+### 2. Gemini CLI in-place enhancement
+
+If you want to enhance the current input box instead of using `/e`, use the patch notes in [patches/gemini-cli/README.md](patches/gemini-cli/README.md).
+
+This mode is closer to an Augment-style loop:
+
+- type rough request
+- trigger enhancement inside the input box
+- review or edit the rewritten text
+- press `Enter` only when ready
+
+### 3. Claude Code `/e`
+
+The project also ships [.claude/commands/e.md](../.claude/commands/e.md).
+
+With the MCP server configured, Claude Code can run the same repo-aware enhancement flow through a visible slash command.
+
+## Quick Setup
+
+### Install dependencies
+
+```bash
+cd cli
+npm install
+```
+
+### Run the MCP server locally
+
+```bash
+node ./bin/chiron.mjs serve
+```
+
+### Add the MCP server to Claude Code
 
 ```json
 {
@@ -44,126 +93,41 @@ Add to your `~/.claude/settings.json` (global) or project `.claude/settings.json
 }
 ```
 
-### 3. Copy the slash command
+## How The Enhancer Thinks
 
-The `/e` command is already in `.claude/commands/e.md`. When you use this project, it's available automatically.
+The enhancer should be dynamic, not template-locked.
 
-For other projects, copy it:
+It can use:
 
-```bash
-mkdir -p /path/to/your-project/.claude/commands
-cp .claude/commands/e.md /path/to/your-project/.claude/commands/
-```
+- package metadata and framework signals
+- directory structure and key config files
+- keyword-based relevant file search
+- branch name and local git changes
+- task-type heuristics for the final rewrite
 
----
+Implementation references:
 
-## Usage
+- [src/context-engine.mjs](src/context-engine.mjs)
+- [src/enhancer.mjs](src/enhancer.mjs)
+- [bin/chiron-enhance.mjs](bin/chiron-enhance.mjs)
 
-### Slash Command (recommended inside Claude Code)
+## Status
 
-In Claude Code, type:
+What is stable today:
 
-```
-/e 修复登录API的性能问题
-/e Add pagination to the user list endpoint
-/e Refactor the auth middleware for better error handling
-```
+- project-local `/e` command flow
+- Claude Code command + MCP integration
+- repo-aware enhancement scripts
 
-The `/e` command uses a visible 4-step pipeline:
+What is still experimental:
 
-1. 🔍 **Scan Project** — detects tech stack, framework, structure
-2. 📂 **Find Relevant Code** — locates files related to your request
-3. 🧠 **Enhance Prompt** — generates expert-grade specification
-4. 🚀 **Execute** — performs the task using the enhanced spec
+- patched Gemini CLI input replacement
+- standalone Ink TUI under `tui/`
 
-### Direct MCP Tool Calls
+## Related Docs
 
-Claude can also call the tools directly when it detects an underspecified request:
-
-- `enhance_prompt` — Full pipeline: scan + search + enhance
-- `scan_project` — Just project analysis
-- `find_relevant_code` — Just file search
-
----
-
-## How It Works
-
-```
-┌─────────────────────────────────────────────────┐
-│  User types: /e <prompt>                        │
-└──────────────────┬──────────────────────────────┘
-                   │
-    ┌──────────────▼──────────────┐
-    │  🔍 Context Engine          │
-    │  • Detect project type      │
-    │  • Parse package.json       │
-    │  • Scan directory tree      │
-    │  • Read key config files    │
-    └──────────────┬──────────────┘
-                   │
-    ┌──────────────▼──────────────┐
-    │  📂 Relevance Search        │
-    │  • Extract keywords         │
-    │  • Score files by relevance │
-    │  • Read top matches         │
-    └──────────────┬──────────────┘
-                   │
-    ┌──────────────▼──────────────┐
-    │  🔀 Git Context             │
-    │  • Current branch           │
-    │  • Recent commits           │
-    │  • Uncommitted changes      │
-    └──────────────┬──────────────┘
-                   │
-    ┌──────────────▼──────────────┐
-    │  🧠 Prompt Enhancer         │
-    │  • Auto-detect strategy     │
-    │  • Build enhanced spec      │
-    │  • Add execution guidance   │
-    └──────────────┬──────────────┘
-                   │
-    ┌──────────────▼──────────────┐
-    │  🚀 Claude executes with    │
-    │     full context & spec     │
-    └─────────────────────────────┘
-```
-
-## MCP Tools Reference
-
-| Tool | Input | Output |
-|------|-------|--------|
-| `enhance_prompt` | `prompt`, `strategy?`, `include_snippets?` | Enhanced specification with project context |
-| `scan_project` | `depth?` | JSON: tech stack, structure, key files |
-| `find_relevant_code` | `query`, `max_results?`, `include_content?` | Ranked list of relevant files with content |
-
-### Strategies
-
-| Strategy | Auto-detected when… |
-|----------|---------------------|
-| `detailed` | Default for underspecified requests |
-| `concise` | "summarize", "brief", "简洁" |
-| `creative` | "idea", "brainstorm", "创意" |
-| `professional` | "business", "report", "演示" |
-| `analytical` | "analyze", "compare", "分析" |
-| `educational` | "explain", "teach", "解释" |
-| `action` | "setup", "deploy", "how to", "配置" |
-
-## Positioning
-
-This directory is not the main product by itself.
-
-- The main product is the Chiron skill at the repository root.
-- `cli/` exists so the same repository can also ship integration experiments and local tooling.
-- If the CLI becomes a product with its own release lifecycle later, it can be split into a separate repo then. For now, keeping it here reduces maintenance cost.
-
-## Comparison: Before vs After
-
-| Aspect | Skill Only (v1) | CLI + MCP (v2) |
-|--------|----------------|----------------|
-| **Trigger** | Vague phrases | `/e` command |
-| **Visibility** | Silent (internal) | Every step shown |
-| **Code awareness** | None | Full repo scan |
-| **Git context** | None | Branch, commits, changes |
-| **Tech stack** | None | Auto-detected |
-| **File relevance** | None | Keyword-scored search |
-| **Enhancement** | Prompt rewriting | Structured specification |
+- [README.md](../README.md)
+- [README.zh-CN.md](../README.zh-CN.md)
+- [patches/gemini-cli/README.md](patches/gemini-cli/README.md)
+- [docs/examples.md](../docs/examples.md)
+- [docs/testing.md](../docs/testing.md)

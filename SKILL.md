@@ -12,7 +12,7 @@ allowed-tools:
 
 # Prompt Enhancer (Agentic)
 
-This repository also includes optional tooling under `cli/`, but this skill file remains the primary entry point and the main open-source surface of Chiron.
+This repository also ships CLI integrations under `cli/`, `.gemini/`, and `.claude/commands/`. This file is the reusable skill entry point when you want Chiron without the CLI layer.
 
 ## Contract
 
