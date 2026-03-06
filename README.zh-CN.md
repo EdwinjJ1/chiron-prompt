@@ -130,7 +130,7 @@ node cli/bin/install-gemini-overlay.mjs
 | 快捷键 | 功能 |
 |--------|------|
 | `Ctrl+E` x 1 | 光标移到行尾（默认行为） |
-| `Ctrl+E` x 2（500 ms 内） | **原地增强提示词**，可继续编辑 |
+| `Ctrl+E` x 2（500 ms 内） | **原地增强提示词**（显示 `🏹 Chiron enhancing...`），可继续编辑 |
 | `Enter` | 正常提交 |
 
 回滚：

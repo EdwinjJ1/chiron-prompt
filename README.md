@@ -137,7 +137,7 @@ What it does:
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+E` × 1 | Move cursor to end of line (default behavior) |
-| `Ctrl+E` × 2 (within 500 ms) | **Enhance prompt in place**, keep editing |
+| `Ctrl+E` × 2 (within 500 ms) | **Enhance prompt in place** (shows `🏹 Chiron enhancing...`), keep editing |
 | `Enter` | Submit as normal |
 
 Rollback:
