@@ -7,13 +7,15 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Free, open-source prompt enhancement for Gemini CLI and Claude Code.**
+**Free and open-source Augment Code alternative, and even better for terminal-first Gemini CLI workflows.**
 
 Turn a rough request into a repo-aware execution prompt, then keep working in the same terminal.
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [CLI Guide](cli/README.md) · [Docs](docs/README.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
+
+![Chiron Gemini CLI hero](assets/chiron-gemini-hero.svg)
 
 ## Why Chiron
 
@@ -44,15 +46,47 @@ Chiron does not just wrap your text in a fixed template. Before it rewrites a re
 
 That is why the output should change with the repository and the task.
 
-## Main Workflows
+## Install Into Existing Gemini CLI
 
-### 1. Gemini CLI `/e` command
+You do not need to run a custom Gemini clone from `/tmp`, and you do not need `npm run start` just to use Chiron.
 
-This repository ships a project-level Gemini custom command at [.gemini/commands/e.toml](.gemini/commands/e.toml).
+If you already use the normal `gemini` command, install Chiron into that existing CLI:
+
+```bash
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
+node ~/.chiron/cli/bin/install-gemini-command.mjs --name chiron
+```
+
+Then open any project and use:
 
 ```text
 gemini
-/e 修复登录流程 bug
+/chiron fix login bug
+```
+
+What the installer does:
+
+- keeps your current `gemini` binary
+- writes a Chiron command into `~/.gemini/commands/`
+- points that command at Chiron's enhancer with an absolute path
+
+If you want a shorter alias, you can install `/e` instead:
+
+```bash
+node ~/.chiron/cli/bin/install-gemini-command.mjs --name e --force
+```
+
+## Main Workflows
+
+### 1. Gemini CLI `/chiron` command on your existing install
+
+This is the recommended path for most users.
+
+After running the installer above:
+
+```text
+gemini
+/chiron 修复登录流程 bug
 ```
 
 Flow:
@@ -62,9 +96,20 @@ Flow:
 3. Chiron builds an enhanced prompt.
 4. Gemini executes against the enhanced prompt.
 
-This is the fastest way to try the repo-aware enhancement flow without patching Gemini CLI itself.
+No custom Gemini build is required.
 
-### 2. Gemini CLI in-place enhancement
+### 2. Project-local Gemini CLI `/e` command
+
+This repository ships a project-level Gemini custom command at [.gemini/commands/e.toml](.gemini/commands/e.toml).
+
+```text
+gemini
+/e 修复登录流程 bug
+```
+
+If this repository is inside the project root, `gemini` can pick up `/e` automatically.
+
+### 3. Gemini CLI in-place enhancement
 
 If you want the closest thing to an Augment-style experience, use the Gemini CLI patch in [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md).
 
@@ -74,15 +119,15 @@ Current status:
 
 - supported through a patch-based integration
 - designed for users who want in-place enhancement, not just `/e` commands
-- still more experimental than the project-level `/e` command
+- still more experimental than the installed `/chiron` command path
 
-### 3. Claude Code `/e` command
+### 4. Claude Code `/e` command
 
 This repository also ships a Claude Code slash command at [.claude/commands/e.md](.claude/commands/e.md).
 
 With the MCP server enabled, `/e` gives a visible enhancement pipeline instead of a silent rewrite.
 
-### 4. Reusable skill
+### 5. Reusable skill
 
 If you only want the reusable skill behavior and do not care about CLI integration, start with [SKILL.md](SKILL.md).
 
@@ -127,7 +172,8 @@ The implementation behind this flow lives in:
 
 | Mode | Best for | Entry point |
 |------|----------|-------------|
-| Gemini `/e` command | Fastest setup inside Gemini CLI | [.gemini/commands/e.toml](.gemini/commands/e.toml) |
+| Gemini `/chiron` command | Direct use in your existing global `gemini` install | [cli/bin/install-gemini-command.mjs](cli/bin/install-gemini-command.mjs) |
+| Project-local Gemini `/e` | Use Chiron from a repo that already contains this project | [.gemini/commands/e.toml](.gemini/commands/e.toml) |
 | Gemini in-place enhancement | Augment-like input replacement flow | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | Repo-aware slash command in Claude Code | [.claude/commands/e.md](.claude/commands/e.md) |
 | Skill only | Reusable prompt-enhancement behavior without CLI wiring | [SKILL.md](SKILL.md) |
@@ -149,7 +195,21 @@ The implementation behind this flow lives in:
 
 ## Quick Start
 
-### Gemini CLI command
+### Existing Gemini CLI install
+
+```bash
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
+node ~/.chiron/cli/bin/install-gemini-command.mjs --name chiron
+```
+
+Then:
+
+```text
+gemini
+/chiron explain why this auth middleware fails on refresh
+```
+
+### Project-local Gemini CLI command
 
 1. Make sure this repository is available inside the project you want to work on.
 2. Start `gemini` from that project root.
@@ -166,6 +226,8 @@ The implementation behind this flow lives in:
 1. Patch your local Gemini CLI using [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md).
 2. Point `CHIRON_ENHANCER_PATH` at [cli/bin/chiron-enhance.mjs](cli/bin/chiron-enhance.mjs).
 3. Trigger enhancement from the Gemini input box, then continue editing before submit.
+
+This path is optional. Most users should start with the existing `gemini` install plus `/chiron`.
 
 ## Related Docs
 

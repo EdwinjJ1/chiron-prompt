@@ -1,5 +1,16 @@
 # Gemini CLI Patch: Double Ctrl+E Enhance In Place
 
+Most users should start with the normal installed `gemini` plus Chiron's slash command installer:
+
+```bash
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
+node ~/.chiron/cli/bin/install-gemini-command.mjs --name chiron
+```
+
+That gives you `/chiron` inside your existing Gemini CLI without patching Gemini itself.
+
+This document is only for the more experimental path where you want to replace the Gemini input box text in place.
+
 This patch keeps Gemini CLI behavior unchanged, and adds an enhancement trigger on top of the existing `Ctrl+E` behavior:
 
 - `Ctrl+E` once: move cursor to end of line, same as Gemini CLI today.

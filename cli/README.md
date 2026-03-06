@@ -4,6 +4,28 @@ Chiron's CLI layer is the part of the project that makes prompt enhancement feel
 
 If the root [README.md](../README.md) explains what Chiron is, this file explains how the CLI-facing pieces fit together.
 
+## Install Into Your Existing Gemini CLI
+
+If your machine already has a working `gemini` command, this is the fastest real-user setup:
+
+```bash
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
+node ~/.chiron/cli/bin/install-gemini-command.mjs --name chiron
+```
+
+Then use it directly inside normal Gemini CLI:
+
+```text
+gemini
+/chiron refactor this auth middleware and explain the regression risk
+```
+
+You do not need:
+
+- a `/tmp/gemini-cli` development clone
+- `npm run start --workspace @google/gemini-cli`
+- a separate launcher just to use Chiron
+
 ## What This Layer Is For
 
 Use `cli/` when you want one of these:
@@ -19,6 +41,7 @@ If you only want the reusable skill behavior, go back to [SKILL.md](../SKILL.md)
 
 | Path | Purpose |
 |------|---------|
+| `bin/install-gemini-command.mjs` | installs Chiron as a slash command into your existing global Gemini CLI |
 | `bin/chiron-enhance.mjs` | main enhancer entrypoint for CLI integrations |
 | `bin/chiron.mjs` | small CLI wrapper for local server usage |
 | `src/context-engine.mjs` | scans the repo, stack, files, and git context |
@@ -29,7 +52,22 @@ If you only want the reusable skill behavior, go back to [SKILL.md](../SKILL.md)
 
 ## Best Current Workflows
 
-### 1. Gemini CLI `/e`
+### 1. Existing Gemini CLI `/chiron`
+
+Install once:
+
+```bash
+node ~/.chiron/cli/bin/install-gemini-command.mjs --name chiron
+```
+
+Then:
+
+```text
+gemini
+/chiron explain why this auth middleware fails on refresh
+```
+
+### 2. Gemini CLI `/e`
 
 This repo ships a project-level command in [.gemini/commands/e.toml](../.gemini/commands/e.toml).
 
@@ -46,9 +84,9 @@ What happens:
 4. Chiron builds a stronger prompt.
 5. Gemini continues with the enhanced prompt.
 
-This is the most practical default setup.
+This is useful when the repository itself is already present inside the current project.
 
-### 2. Gemini CLI in-place enhancement
+### 3. Gemini CLI in-place enhancement
 
 If you want to enhance the current input box instead of using `/e`, use the patch notes in [patches/gemini-cli/README.md](patches/gemini-cli/README.md).
 
@@ -59,7 +97,7 @@ This mode is closer to an Augment-style loop:
 - review or edit the rewritten text
 - press `Enter` only when ready
 
-### 3. Claude Code `/e`
+### 4. Claude Code `/e`
 
 The project also ships [.claude/commands/e.md](../.claude/commands/e.md).
 
