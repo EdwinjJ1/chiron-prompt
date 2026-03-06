@@ -42,6 +42,8 @@ If you only want the reusable skill behavior, go back to [SKILL.md](../SKILL.md)
 | Path | Purpose |
 |------|---------|
 | `bin/install-gemini-command.mjs` | installs Chiron as a slash command into your existing global Gemini CLI |
+| `bin/install-gemini-overlay.mjs` | **one-command installer**: copies Gemini CLI into `~/.chiron/gemini-cli`, patches it with double `Ctrl+E`, writes `~/.local/bin/gemini` wrapper |
+| `bin/install-gemini-inplace-enhance.mjs` | patches your **global** Gemini CLI in place with double `Ctrl+E` (backs up original) |
 | `bin/chiron-enhance.mjs` | main enhancer entrypoint for CLI integrations |
 | `bin/chiron.mjs` | small CLI wrapper for local server usage |
 | `src/context-engine.mjs` | scans the repo, stack, files, and git context |
@@ -86,18 +88,60 @@ What happens:
 
 This is useful when the repository itself is already present inside the current project.
 
-### 3. Gemini CLI in-place enhancement
+### 3. Gemini CLI overlay installer (Augment-style, recommended)
 
-If you want to enhance the current input box instead of using `/e`, use the patch notes in [patches/gemini-cli/README.md](patches/gemini-cli/README.md).
+This is the easiest way to get double `Ctrl+E` enhance-in-place without touching the global Gemini CLI:
 
-This mode is closer to an Augment-style loop:
+```bash
+node cli/bin/install-gemini-overlay.mjs
+```
 
-- type rough request
-- trigger enhancement inside the input box
-- review or edit the rewritten text
-- press `Enter` only when ready
+What it does:
 
-### 4. Claude Code `/e`
+1. Copies your global Gemini CLI into `~/.chiron/gemini-cli` (user-owned)
+2. Copies Chiron runtime into `~/.chiron/cli`
+3. Patches the overlay with double `Ctrl+E` enhancement
+4. Writes `~/.local/bin/gemini` → launches the patched overlay everywhere
+
+Usage:
+
+1. Open a new terminal (or `hash -r`)
+2. Enter any project directory
+3. Run `gemini`
+4. Type a rough request
+5. Press `Ctrl+E` once → move to end of line
+6. Press `Ctrl+E` again within 500 ms → **replace input with enhanced prompt**
+
+Rollback:
+
+```bash
+rm -f ~/.local/bin/gemini
+rm -rf ~/.chiron
+hash -r
+```
+
+### 4. Gemini CLI in-place patch (no overlay)
+
+If you'd rather patch your global Gemini CLI directly (root-owned), instead of creating an overlay:
+
+```bash
+node cli/bin/install-gemini-inplace-enhance.mjs
+```
+
+This patches the **original** Gemini CLI's `InputPrompt.js` in place (a backup is saved under `~/.chiron/backups/`).
+
+Behavior is the same double `Ctrl+E` flow described above.
+
+You can also apply the patch manually:
+
+```bash
+# inside your gemini-cli clone
+git apply cli/patches/gemini-cli/double-ctrl-e-enhance-in-place.patch
+```
+
+Full details: [patches/gemini-cli/README.md](patches/gemini-cli/README.md)
+
+### 5. Claude Code `/e`
 
 The project also ships [.claude/commands/e.md](../.claude/commands/e.md).
 
@@ -156,10 +200,12 @@ What is stable today:
 - project-local `/e` command flow
 - Claude Code command + MCP integration
 - repo-aware enhancement scripts
+- `install-gemini-overlay.mjs` — user-owned overlay, no root needed
+- `install-gemini-inplace-enhance.mjs` — global patch with backup
 
 What is still experimental:
 
-- patched Gemini CLI input replacement
+- manual `git apply` patch workflow
 - standalone Ink TUI under `tui/`
 
 ## Related Docs

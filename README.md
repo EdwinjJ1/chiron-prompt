@@ -34,6 +34,18 @@ The positioning is simple:
 - hackable
 - a better fit than a heavyweight IDE agent when your main goal is prompt enhancement inside an existing CLI workflow
 
+## Prerequisites
+
+Before you start, make sure these are installed:
+
+| Dependency | Version | Check |
+|------------|---------|-------|
+| [Node.js](https://nodejs.org/) | 18+ | `node -v` |
+| [Git](https://git-scm.com/) | any | `git --version` |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | latest | `gemini --version` |
+
+> **Note:** Gemini CLI is Google's official terminal client. Install it with `npm install -g @google/gemini-cli` if you don't have it yet.
+
 ## What Gets Added During Enhancement
 
 Chiron does not just wrap your text in a fixed template. Before it rewrites a request, it can read:
@@ -78,15 +90,15 @@ node ~/.chiron/cli/bin/install-gemini-command.mjs --name e --force
 
 ## Main Workflows
 
-### 1. Gemini CLI `/chiron` command on your existing install
+### 1. ⭐ Gemini CLI `/chiron` command (recommended)
 
-This is the recommended path for most users.
+This is the recommended path for most users. No custom Gemini build required.
 
 After running the installer above:
 
 ```text
 gemini
-/chiron 修复登录流程 bug
+/chiron fix login bug
 ```
 
 Flow:
@@ -96,38 +108,80 @@ Flow:
 3. Chiron builds an enhanced prompt.
 4. Gemini executes against the enhanced prompt.
 
-No custom Gemini build is required.
-
 ### 2. Project-local Gemini CLI `/e` command
 
 This repository ships a project-level Gemini custom command at [.gemini/commands/e.toml](.gemini/commands/e.toml).
 
 ```text
 gemini
-/e 修复登录流程 bug
+/e fix login bug
 ```
 
 If this repository is inside the project root, `gemini` can pick up `/e` automatically.
 
-### 3. Gemini CLI in-place enhancement
+### 3. ⭐ Gemini CLI overlay installer (Augment-style)
 
-If you want the closest thing to an Augment-style experience, use the Gemini CLI patch in [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md).
+One command gives you a user-owned, patched Gemini CLI with double `Ctrl+E` enhance-in-place:
 
-That path lets you enhance the current input box text in place, keep editing, and only submit when you are ready.
+```bash
+node cli/bin/install-gemini-overlay.mjs
+```
 
-Current status:
+What it does:
 
-- supported through a patch-based integration
-- designed for users who want in-place enhancement, not just `/e` commands
-- still more experimental than the installed `/chiron` command path
+1. Copies your global Gemini CLI into `~/.chiron/gemini-cli`
+2. Copies Chiron runtime into `~/.chiron/cli`
+3. Patches the overlay with double `Ctrl+E` enhancement
+4. Writes `~/.local/bin/gemini` wrapper
 
-### 4. Claude Code `/e` command
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+E` × 1 | Move cursor to end of line (default behavior) |
+| `Ctrl+E` × 2 (within 500 ms) | **Enhance prompt in place**, keep editing |
+| `Enter` | Submit as normal |
+
+Rollback:
+
+```bash
+rm -f ~/.local/bin/gemini
+rm -rf ~/.chiron
+hash -r
+```
+
+Install locations:
+
+- Wrapper: `~/.local/bin/gemini`
+- Overlay Gemini: `~/.chiron/gemini-cli`
+- Chiron runtime: `~/.chiron/cli`
+
+> Your original global Gemini CLI stays untouched.
+
+### 4. Gemini CLI in-place patch (manual)
+
+If you'd rather patch the global Gemini CLI directly instead of using an overlay:
+
+```bash
+node cli/bin/install-gemini-inplace-enhance.mjs
+```
+
+Or apply the patch manually:
+
+```bash
+# inside your gemini-cli clone
+git apply /path/to/chiron/cli/patches/gemini-cli/double-ctrl-e-enhance-in-place.patch
+```
+
+Full details: [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md)
+
+> **Note:** This path patches your global install. The overlay approach (above) is safer.
+
+### 5. Claude Code `/e` command
 
 This repository also ships a Claude Code slash command at [.claude/commands/e.md](.claude/commands/e.md).
 
 With the MCP server enabled, `/e` gives a visible enhancement pipeline instead of a silent rewrite.
 
-### 5. Reusable skill
+### 6. Reusable skill
 
 If you only want the reusable skill behavior and do not care about CLI integration, start with [SKILL.md](SKILL.md).
 
@@ -174,7 +228,9 @@ The implementation behind this flow lives in:
 |------|----------|-------------|
 | Gemini `/chiron` command | Direct use in your existing global `gemini` install | [cli/bin/install-gemini-command.mjs](cli/bin/install-gemini-command.mjs) |
 | Project-local Gemini `/e` | Use Chiron from a repo that already contains this project | [.gemini/commands/e.toml](.gemini/commands/e.toml) |
-| Gemini in-place enhancement | Augment-like input replacement flow | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
+| Overlay installer ⭐ | Augment-style double `Ctrl+E` without touching global install | [cli/bin/install-gemini-overlay.mjs](cli/bin/install-gemini-overlay.mjs) |
+| In-place patch | Patch global Gemini CLI directly | [cli/bin/install-gemini-inplace-enhance.mjs](cli/bin/install-gemini-inplace-enhance.mjs) |
+| Manual patch | `git apply` the `.patch` file yourself | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | Repo-aware slash command in Claude Code | [.claude/commands/e.md](.claude/commands/e.md) |
 | Skill only | Reusable prompt-enhancement behavior without CLI wiring | [SKILL.md](SKILL.md) |
 
@@ -195,7 +251,7 @@ The implementation behind this flow lives in:
 
 ## Quick Start
 
-### Existing Gemini CLI install
+### Option A: Existing Gemini CLI install (recommended)
 
 ```bash
 git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
@@ -209,25 +265,37 @@ gemini
 /chiron explain why this auth middleware fails on refresh
 ```
 
-### Project-local Gemini CLI command
+### Option B: Project-local Gemini CLI command
 
 1. Make sure this repository is available inside the project you want to work on.
 2. Start `gemini` from that project root.
 3. Run `/e <your request>`.
 
-### Claude Code command
+### Option C: Claude Code command
 
 1. Add the MCP server from [cli/README.md](cli/README.md).
 2. Keep [.claude/commands/e.md](.claude/commands/e.md) in the project.
 3. Run `/e <your request>`.
 
-### Gemini in-place enhancement
+### Option D: Overlay installer (Augment-style double Ctrl+E)
 
-1. Patch your local Gemini CLI using [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md).
-2. Point `CHIRON_ENHANCER_PATH` at [cli/bin/chiron-enhance.mjs](cli/bin/chiron-enhance.mjs).
-3. Trigger enhancement from the Gemini input box, then continue editing before submit.
+```bash
+node cli/bin/install-gemini-overlay.mjs
+```
 
-This path is optional. Most users should start with the existing `gemini` install plus `/chiron`.
+1. Open a new terminal (or `hash -r`).
+2. Run `gemini` in any project.
+3. Type your prompt, press `Ctrl+E` twice to enhance in place.
+4. Continue editing if needed, press `Enter` to submit.
+
+Rollback: `rm -f ~/.local/bin/gemini && rm -rf ~/.chiron && hash -r`
+
+### Option E: Manual in-place patch
+
+1. Run `node cli/bin/install-gemini-inplace-enhance.mjs`, or
+2. `git apply` the patch per [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md).
+
+> Most users should start with **Option A** or **Option D**.
 
 ## Related Docs
 

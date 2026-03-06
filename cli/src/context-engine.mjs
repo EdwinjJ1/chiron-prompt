@@ -133,7 +133,12 @@ export class ContextEngine {
 
         const run = (cmd) => {
             try {
-                return execSync(cmd, { cwd: this.cwd, encoding: 'utf-8', timeout: 5000 }).trim();
+                return execSync(cmd, {
+                    cwd: this.cwd,
+                    encoding: 'utf-8',
+                    timeout: 5000,
+                    stdio: ['ignore', 'pipe', 'ignore'],
+                }).trim();
             } catch { return ''; }
         };
 
