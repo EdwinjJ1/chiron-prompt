@@ -5,7 +5,7 @@ Reference documentation extracted from the Axon project's prompt optimization sy
 ## Source Project
 
 **Project**: Axon
-**Location**: `/Users/edwinj/Edwin/second-brain/01-projects/Axon/`
+**Location**: Private local Axon source workspace (not included in this repository)
 **Purpose**: Electron desktop application for AI prompt engineering with one-click optimization
 
 ## Core Optimization Prompt Template
@@ -247,9 +247,9 @@ const mapStrategyToStrategies = (
 ## Code Reference
 
 ### Files Referenced
-- `/Users/edwinj/Edwin/second-brain/01-projects/Axon/src/main/services/aiService.ts` - AI service with optimization logic
-- `/Users/edwinj/Edwin/second-brain/01-projects/Axon/src/renderer/hooks/useOptimize.ts` - Strategy mapping and usage patterns
-- `/Users/edwinj/Edwin/second-brain/01-projects/Axon/src/renderer/types/optimization.ts` - Type definitions
+- `src/main/services/aiService.ts` - AI service with optimization logic
+- `src/renderer/hooks/useOptimize.ts` - Strategy mapping and usage patterns
+- `src/renderer/types/optimization.ts` - Type definitions
 
 ### Key Functions
 - `optimizePrompt(text, options)` - Main optimization function

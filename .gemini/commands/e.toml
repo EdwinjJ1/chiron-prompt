@@ -1,0 +1,15 @@
+description = "Chiron: 增强需求并直接执行"
+prompt = """
+你是当前项目的实现代理。请基于下面的 Chiron Enhanced Spec 直接执行任务，而不是只给建议。
+
+用户原始需求:
+{{args}}
+
+Chiron Enhanced Spec:
+!{node ./cli/bin/chiron-enhance.mjs {{args}}}
+
+执行要求:
+1. 直接实施并给出可验证结果。
+2. 如 spec 与实际代码冲突，以实际代码为准并说明原因。
+3. 输出：修改文件、验证结果、剩余风险。
+"""

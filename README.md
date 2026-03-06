@@ -9,11 +9,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Transform basic prompts into powerful, AI-optimized queries — then execute the work.**
+**A prompt-enhancement skill first, with optional CLI integrations in the same repository.**
 
-将基础提示词转化为强大、精准的 AI 优化查询 — 并自动执行任务。
+将基础需求增强为更强的执行提示词。这个仓库以 skill 为主，也包含可选的 CLI 集成。
 
-[Installation](#installation) · [Quick Start](#quick-start) · [Strategies](#optimization-strategies) · [Contributing](CONTRIBUTING.md)
+[Skill Install](#skill-installation) · [CLI Integration](#cli-integration) · [Docs](docs/README.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -29,7 +29,64 @@
 
 ## Overview
 
-Chiron Prompt Enhancer is an open-source **Claude Code project skill** that upgrades underspecified requests into an expert-grade spec and then **executes the work**. It also keeps an optional, local prompt history so users can reuse what worked.
+Chiron Prompt Enhancer is an open-source **prompt-enhancement skill** for Claude Code style agents. Its core job is to take an underspecified request, add missing technical context, and improve execution quality.
+
+This repository intentionally keeps everything in **one repo**:
+
+- The root is the **main product**: the reusable skill and its documentation.
+- `cli/` contains **optional integrations** for MCP, prompt enhancement scripts, and Gemini CLI experiments.
+- Users who only want the skill should never need to touch `cli/`.
+
+If you are publishing this project, that is the cleanest framing: **one repository, two ways to use Chiron**.
+
+## Choose A Mode
+
+### 1. Skill mode
+
+Use this if you want Chiron as a reusable project skill inside Claude Code or a similar agent environment.
+
+- Primary entrypoint: [SKILL.md](SKILL.md)
+- Best for: prompt enhancement during normal coding workflows
+- Lowest setup cost
+
+### 2. CLI integration mode
+
+Use this if you want prompt enhancement wired into a CLI workflow such as Gemini CLI.
+
+- Primary entrypoint: [cli/README.md](cli/README.md)
+- Best for: in-place prompt enhancement, MCP usage, and local experiments
+- Higher setup cost and more moving parts
+
+## Repository Layout
+
+```text
+.
+├── README.md                # Project overview and installation guide
+├── SKILL.md                 # Core Chiron skill
+├── docs/                    # Examples, testing notes, references, submissions
+├── cli/                     # Optional CLI + MCP + Gemini integration layer
+│   ├── README.md
+│   ├── bin/
+│   ├── patches/
+│   ├── src/
+│   └── tui/
+├── .claude/                 # Claude Code command + runtime skill assets
+├── .gemini/                 # Gemini command integration
+├── tests/                   # Pytest coverage for prompt logging helpers
+└── prompt-history/          # Optional prompt library/logging
+```
+
+## What The Repo Is
+
+- A skill repository that can be installed directly into `.claude/skills/`
+- A place to keep Chiron's optional integration tooling close to the skill
+- A single open-source home for both prompt logic and workflow integrations
+
+## What The Repo Is Not
+
+- Not a standalone replacement for Gemini CLI
+- Not primarily a general-purpose Node CLI package
+- Not split into multiple repos unless the CLI grows into a separate product later
 
 ### System Architecture
 
@@ -97,9 +154,9 @@ The system automatically detects your intent (e.g., distinguishing between "lear
 
 ---
 
-## Installation
+## Skill Installation
 
-### For Claude Code Users
+### Install Into A Project
 
 Add this skill to your Claude Code project:
 
@@ -112,7 +169,7 @@ mkdir -p .claude/skills
 git clone https://github.com/EdwinjJ1/chiron-prompt.git .claude/skills/chiron-prompt
 ```
 
-### Global Installation (All Projects)
+### Install Globally
 
 ```bash
 # Clone to your global skills directory
@@ -120,11 +177,23 @@ mkdir -p ~/.claude/skills
 git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.claude/skills/chiron-prompt
 ```
 
-### Manual Installation
+### Minimal Manual Install
 
 1. Download or clone this repository
 2. Copy the `SKILL.md` file to your `.claude/skills/prompt-enhancer/` directory
 3. Restart Claude Code to activate the skill
+
+## CLI Integration
+
+The optional CLI layer lives under [cli/README.md](cli/README.md).
+
+Use it only if you want one of these:
+
+- MCP server integration
+- External prompt enhancement script
+- Gemini CLI in-place enhancement experiments
+
+If you only want the skill, skip `cli/` entirely.
 
 ---
 
@@ -361,8 +430,22 @@ chiron-prompt/
 ├── SECURITY.md               # Security policy
 ├── MAINTAINERS.md            # Maintainer information
 ├── pyproject.toml            # Python package configuration
-├── examples.md               # Examples (prompt-only + agentic execution)
-├── tests.md                  # Manual test cases
+├── docs/
+│   ├── README.md             # Documentation index
+│   ├── examples.md           # Examples (prompt-only + agentic execution)
+│   ├── testing.md            # Manual test cases
+│   ├── contribution/
+│   │   ├── SUBMISSION_GUIDE.md
+│   │   └── prompt-enhancer.md
+│   └── reference/
+│       └── axon-implementation-notes.md
+├── cli/
+│   ├── README.md
+│   ├── bin/
+│   ├── patches/
+│   │   └── gemini-cli/
+│   ├── src/
+│   └── tui/
 ├── tests/                    # Automated pytest tests
 │   └── test_append_prompt_library.py
 ├── assets/                   # Demo materials
@@ -375,15 +458,14 @@ chiron-prompt/
 │   │   └── feature_request.md
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── .claude/
+│   ├── commands/
 │   └── skills/
-│       └── prompt-enhancer/
-│           ├── SKILL.md      # Claude Code project skill (runtime)
-│           └── scripts/
-│               └── append_prompt_library.py
+├── .gemini/
+│   ├── README.md
+│   └── commands/
 ├── prompt-history/
 │   └── PROMPT_LIBRARY.md
-└── reference/
-    └── axon-implementation-notes.md
+└── LICENSE.txt
 ```
 
 ---
@@ -424,8 +506,8 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 - 🐛 [Report a Bug](https://github.com/EdwinjJ1/chiron-prompt/issues/new?template=bug_report.md)
 - ✨ [Request a Feature](https://github.com/EdwinjJ1/chiron-prompt/issues/new?template=feature_request.md)
 - 🔒 [Security Policy](SECURITY.md)
-- 📖 [View Examples](examples.md)
-- 🧪 [Run Tests](tests.md)
+- 📖 [View Examples](docs/examples.md)
+- 🧪 [Run Tests](docs/testing.md)
 
 ---
 

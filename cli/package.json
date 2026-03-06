@@ -1,0 +1,28 @@
+{
+    "name": "chiron-prompt-cli",
+    "version": "2.0.0",
+    "description": "Chiron Prompt Enhancer — MCP Server & CLI for intelligent prompt enhancement with codebase context",
+    "type": "module",
+    "bin": {
+        "chiron": "./bin/chiron.mjs"
+    },
+    "main": "src/server.mjs",
+    "scripts": {
+        "start": "node src/server.mjs",
+        "serve": "node src/server.mjs"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.12.1"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "prompt-engineering",
+        "mcp",
+        "claude-code",
+        "cli",
+        "context-engine"
+    ],
+    "license": "MIT"
+}

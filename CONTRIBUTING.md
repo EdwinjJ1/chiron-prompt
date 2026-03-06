@@ -57,7 +57,7 @@ Enhancement suggestions are tracked as GitHub issues. When suggesting:
 ### Contributing Examples
 
 We love new examples! If you've used Chiron for an interesting prompt transformation:
-1. Add your example to `examples.md`
+1. Add your example to `docs/examples.md`
 2. Follow the existing format
 3. Include both the original and enhanced versions
 
@@ -85,8 +85,10 @@ chiron-prompt/
 │       └── append_prompt_library.py
 ├── README.md              # Main documentation
 ├── SKILL.md               # Design documentation
-├── examples.md            # Usage examples
-├── tests.md               # Test cases
+├── docs/
+│   ├── examples.md        # Usage examples
+│   ├── testing.md         # Test cases
+│   └── reference/
 └── prompt-history/
     └── PROMPT_LIBRARY.md  # Generated prompt history
 ```
@@ -186,4 +188,3 @@ Feel free to open an issue with the `question` label or reach out to the maintai
 ---
 
 Thank you for contributing!
-/

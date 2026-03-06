@@ -12,6 +12,8 @@ allowed-tools:
 
 # Prompt Enhancer (Agentic)
 
+This repository also includes optional tooling under `cli/`, but this skill file remains the primary entry point and the main open-source surface of Chiron.
+
 ## Contract
 
 When this Skill is active, do **not** stop at writing a better prompt.

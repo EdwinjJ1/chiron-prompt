@@ -160,5 +160,10 @@ cython_debug/
 # MacOS
 .DS_Store
 
+# Node / TypeScript
+node_modules/
+cli/tui/dist/
+*.tsbuildinfo
+
 # Prompt Library Log (User Data)
 prompt-history/

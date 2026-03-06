@@ -1,0 +1,285 @@
+diff --git a/packages/cli/src/config/keyBindings.ts b/packages/cli/src/config/keyBindings.ts
+index 3122acef1..7039983ed 100644
+--- a/packages/cli/src/config/keyBindings.ts
++++ b/packages/cli/src/config/keyBindings.ts
+@@ -69,6 +69,7 @@ export enum Command {
+   // Text Input
+   SUBMIT = 'input.submit',
+   NEWLINE = 'input.newline',
++  ENHANCE_IN_PLACE = 'input.enhanceInPlace',
+   OPEN_EXTERNAL_EDITOR = 'input.openExternalEditor',
+   PASTE_CLIPBOARD = 'input.paste',
+ 
+@@ -264,6 +265,7 @@ export const defaultKeyBindings: KeyBindingConfig = {
+     { key: 'return', shift: true },
+     { key: 'j', ctrl: true },
+   ],
++  [Command.ENHANCE_IN_PLACE]: [{ key: 'e', alt: true }],
+   [Command.OPEN_EXTERNAL_EDITOR]: [{ key: 'x', ctrl: true }],
+   [Command.PASTE_CLIPBOARD]: [
+     { key: 'v', ctrl: true },
+@@ -387,6 +389,7 @@ export const commandCategories: readonly CommandCategory[] = [
+     commands: [
+       Command.SUBMIT,
+       Command.NEWLINE,
++      Command.ENHANCE_IN_PLACE,
+       Command.OPEN_EXTERNAL_EDITOR,
+       Command.PASTE_CLIPBOARD,
+     ],
+@@ -488,6 +491,7 @@ export const commandDescriptions: Readonly<Record<Command, string>> = {
+   // Text Input
+   [Command.SUBMIT]: 'Submit the current prompt.',
+   [Command.NEWLINE]: 'Insert a newline without submitting.',
++  [Command.ENHANCE_IN_PLACE]: 'Enhance current prompt and replace input in place.',
+   [Command.OPEN_EXTERNAL_EDITOR]:
+     'Open the current prompt or the plan in an external editor.',
+   [Command.PASTE_CLIPBOARD]: 'Paste from the clipboard.',
+diff --git a/packages/cli/src/ui/components/InputPrompt.test.tsx b/packages/cli/src/ui/components/InputPrompt.test.tsx
+index 4a9658f47..78f99c872 100644
+--- a/packages/cli/src/ui/components/InputPrompt.test.tsx
++++ b/packages/cli/src/ui/components/InputPrompt.test.tsx
+@@ -18,6 +18,7 @@ import {
+ import type { Config } from '@google/gemini-cli-core';
+ import { ApprovalMode, debugLogger } from '@google/gemini-cli-core';
+ import * as path from 'node:path';
++import { execFile } from 'node:child_process';
+ import type { CommandContext, SlashCommand } from '../commands/types.js';
+ import { CommandKind } from '../commands/types.js';
+ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+@@ -59,6 +60,13 @@ vi.mock('../hooks/useReverseSearchCompletion.js');
+ vi.mock('clipboardy');
+ vi.mock('../utils/clipboardUtils.js');
+ vi.mock('../hooks/useKittyKeyboardProtocol.js');
++vi.mock('node:child_process', async (importOriginal) => {
++  const actual = await importOriginal<typeof import('node:child_process')>();
++  return {
++    ...actual,
++    execFile: vi.fn(),
++  };
++});
+ vi.mock('../utils/terminalUtils.js', () => ({
+   isLowColorDepth: vi.fn(() => false),
+ }));
+@@ -148,6 +156,7 @@ describe('InputPrompt', () => {
+     useReverseSearchCompletion,
+   );
+   const mockedUseKittyKeyboardProtocol = vi.mocked(useKittyKeyboardProtocol);
++  const mockedExecFile = vi.mocked(execFile);
+   const mockSetEmbeddedShellFocused = vi.fn();
+   const mockSetCleanUiDetailsVisible = vi.fn();
+   const mockToggleCleanUiDetailsVisible = vi.fn();
+@@ -161,6 +170,7 @@ describe('InputPrompt', () => {
+ 
+   beforeEach(() => {
+     vi.resetAllMocks();
++    mockedExecFile.mockReset();
+     vi.spyOn(
+       terminalCapabilityManager,
+       'isKittyProtocolEnabled',
+@@ -2981,6 +2991,67 @@ describe('InputPrompt', () => {
+     });
+   });
+ 
++  describe('Alt+E keyboard shortcut', () => {
++    it('should enhance prompt in place and keep submit untouched', async () => {
++      props.buffer.text = 'fix login bug';
++      props.buffer.cursor = [0, 3];
++      props.buffer.lines = ['fix login bug'];
++
++      mockedExecFile.mockImplementation((...args: unknown[]) => {
++        const callback = args.at(-1) as (
++          error: NodeJS.ErrnoException | null,
++          stdout: string,
++          stderr: string,
++        ) => void;
++        callback(null, 'enhanced prompt', '');
++        return {} as never;
++      });
++
++      const { stdin, unmount } = renderWithProviders(
++        <InputPrompt {...props} />,
++      );
++
++      await act(async () => {
++        stdin.write('\u001be'); // Alt+E
++      });
++
++      await waitFor(() => {
++        expect(mockedExecFile).toHaveBeenCalledWith(
++          'node',
++          [path.join('test', 'project', 'cli', 'bin', 'chiron-enhance.mjs'), 'fix login bug'],
++          expect.objectContaining({ cwd: path.join('test', 'project') }),
++          expect.any(Function),
++        );
++      });
++      expect(props.buffer.setText).toHaveBeenLastCalledWith(
++        'enhanced prompt',
++        'end',
++      );
++      expect(props.onSubmit).not.toHaveBeenCalled();
++      unmount();
++    });
++
++    it('should not run enhancer for empty prompt', async () => {
++      props.buffer.text = '';
++      props.buffer.cursor = [0, 0];
++      props.buffer.lines = [''];
++
++      const { stdin, unmount } = renderWithProviders(
++        <InputPrompt {...props} />,
++      );
++
++      await act(async () => {
++        stdin.write('\u001be'); // Alt+E
++      });
++
++      await waitFor(() => {
++        expect(mockedExecFile).not.toHaveBeenCalled();
++      });
++      expect(props.onSubmit).not.toHaveBeenCalled();
++      unmount();
++    });
++  });
++
+   describe('command search (Ctrl+R when not in shell)', () => {
+     it('enters command search on Ctrl+R and shows suggestions', async () => {
+       props.shellModeActive = false;
+diff --git a/packages/cli/src/ui/components/InputPrompt.tsx b/packages/cli/src/ui/components/InputPrompt.tsx
+index ad057ca8c..a58657636 100644
+--- a/packages/cli/src/ui/components/InputPrompt.tsx
++++ b/packages/cli/src/ui/components/InputPrompt.tsx
+@@ -55,6 +55,8 @@ import {
+   isSlashCommand,
+ } from '../utils/commandUtils.js';
+ import * as path from 'node:path';
++import { execFile } from 'node:child_process';
++import { promisify } from 'node:util';
+ import { SCREEN_READER_USER_PREFIX } from '../textConstants.js';
+ import { getSafeLowColorBackground } from '../themes/color-utils.js';
+ import { isLowColorDepth } from '../utils/terminalUtils.js';
+@@ -74,6 +76,8 @@ import { useAlternateBuffer } from '../hooks/useAlternateBuffer.js';
+ import { shouldDismissShortcutsHelpOnHotkey } from '../utils/shortcutsHelp.js';
+ import { useRepeatedKeyPress } from '../hooks/useRepeatedKeyPress.js';
+ 
++const execFileAsync = promisify(execFile);
++
+ /**
+  * Returns if the terminal can be trusted to handle paste events atomically
+  * rather than potentially sending multiple paste events separated by line
+@@ -253,6 +257,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
+     number | null
+   >(null);
+   const pasteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
++  const enhanceInPlaceRunningRef = useRef(false);
+   const innerBoxRef = useRef<DOMElement>(null);
+   const hasUserNavigatedSuggestions = useRef(false);
+ 
+@@ -412,6 +417,88 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
+     [inputHistory, shellModeActive, streamingState, setQueueErrorMessage],
+   );
+ 
++  const enhanceInputInPlace = useCallback(() => {
++    if (enhanceInPlaceRunningRef.current) {
++      appEvents.emit(AppEvent.TransientMessage, {
++        message: 'Prompt enhancement is already running',
++        type: TransientMessageType.Hint,
++      });
++      return;
++    }
++
++    const rawPrompt = buffer.text.trim();
++    if (!rawPrompt) {
++      appEvents.emit(AppEvent.TransientMessage, {
++        message: 'Type a prompt before enhancing',
++        type: TransientMessageType.Hint,
++      });
++      return;
++    }
++
++    const projectRoot = config.getProjectRoot() || process.cwd();
++    const configuredEnhancerPath =
++      process.env['CHIRON_ENHANCER_PATH']?.trim();
++    const enhancerScriptPath =
++      configuredEnhancerPath && configuredEnhancerPath.length > 0
++        ? configuredEnhancerPath
++        : path.join(projectRoot, 'cli', 'bin', 'chiron-enhance.mjs');
++
++    enhanceInPlaceRunningRef.current = true;
++    appEvents.emit(AppEvent.TransientMessage, {
++      message: 'Enhancing prompt in place...',
++      type: TransientMessageType.Hint,
++    });
++
++    void execFileAsync('node', [enhancerScriptPath, rawPrompt], {
++      cwd: projectRoot,
++      maxBuffer: 10 * 1024 * 1024,
++    })
++      .then((result: { stdout: string } | string) => {
++        const stdout = typeof result === 'string' ? result : result.stdout;
++        const enhancedPrompt = stdout.trim();
++        if (!enhancedPrompt) {
++          appEvents.emit(AppEvent.TransientMessage, {
++            message: 'Enhancer returned empty output',
++            type: TransientMessageType.Warning,
++          });
++          return;
++        }
++
++        buffer.setText(enhancedPrompt, 'end');
++        resetCompletionState();
++        resetReverseSearchCompletionState();
++        resetCommandSearchCompletionState();
++        setExpandedSuggestionIndex(-1);
++
++        appEvents.emit(AppEvent.TransientMessage, {
++          message: 'Prompt enhanced in place',
++          type: TransientMessageType.Hint,
++        });
++      })
++      .catch((error: unknown) => {
++        const err = error as NodeJS.ErrnoException;
++        const message =
++          err.code === 'ENOENT'
++            ? 'Enhancer not found. Set CHIRON_ENHANCER_PATH or add cli/bin/chiron-enhance.mjs.'
++            : error instanceof Error
++              ? error.message
++              : 'Unknown error while enhancing prompt';
++        appEvents.emit(AppEvent.TransientMessage, {
++          message: `Enhancement failed: ${message}`,
++          type: TransientMessageType.Warning,
++        });
++      })
++      .finally(() => {
++        enhanceInPlaceRunningRef.current = false;
++      });
++  }, [
++    buffer,
++    config,
++    resetCommandSearchCompletionState,
++    resetCompletionState,
++    resetReverseSearchCompletionState,
++  ]);
++
+   // Effect to reset completion if history navigation just occurred and set the text
+   useEffect(() => {
+     if (suppressCompletion) {
+@@ -783,6 +870,11 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
+         if (handled) return true;
+       }
+ 
++      if (keyMatchers[Command.ENHANCE_IN_PLACE](key)) {
++        enhanceInputInPlace();
++        return true;
++      }
++
+       if (
+         key.sequence === '!' &&
+         buffer.text === '' &&
+@@ -1230,6 +1322,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
+       onClearScreen,
+       inputHistory,
+       handleSubmit,
++      enhanceInputInPlace,
+       shellHistory,
+       reverseSearchCompletion,
+       handleClipboardPaste,
