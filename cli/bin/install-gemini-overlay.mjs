@@ -175,9 +175,14 @@ const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
             return;
         }
         ctrlEEnhancingRef.current = true;
+        const savedInput = rawInput;
+        buffer.setText('🏹 Chiron enhancing... (' + savedInput + ')');
+        buffer.move('end');
         try {
-            const enhancedText = await runChironEnhancer(rawInput);
+            const enhancedText = await runChironEnhancer(savedInput);
             if (!enhancedText) {
+                buffer.setText(savedInput);
+                buffer.move('end');
                 return;
             }
             buffer.setText(enhancedText);
@@ -188,6 +193,8 @@ const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
             setExpandedSuggestionIndex(-1);
         }
         catch (error) {
+            buffer.setText(savedInput);
+            buffer.move('end');
             const message = error instanceof Error ? error.message : 'Chiron enhancement failed';
             setQueueErrorMessage(\`Chiron enhance failed: \${message}\`);
         }
