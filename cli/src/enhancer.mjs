@@ -277,22 +277,26 @@ export class Enhancer {
             };
 
         const lines = [];
-        lines.push(`${labels.task}：${this._ensureTerminalPunctuation(rawPrompt, locale)}`);
+
+        // Ensure the full raw input text is clearly retained
+        lines.push(`## 📝 ${labels.task}`);
+        lines.push(this._ensureTerminalPunctuation(rawPrompt, locale));
+        lines.push('');
 
         const stack = this._getInlineStack(projectContext);
         if (stack) {
             lines.push(
                 locale === 'zh'
-                    ? `${labels.stack}：${stack}。`
-                    : `${labels.stack}: ${stack}.`,
+                    ? `> ${labels.stack}：${stack}。`
+                    : `> ${labels.stack}: ${stack}.`,
             );
         }
 
         if (projectContext?.framework) {
             lines.push(
                 locale === 'zh'
-                    ? `${labels.framework}：${projectContext.framework}。`
-                    : `${labels.framework}: ${projectContext.framework}.`,
+                    ? `> ${labels.framework}：${projectContext.framework}。`
+                    : `> ${labels.framework}: ${projectContext.framework}.`,
             );
         }
 
@@ -303,22 +307,23 @@ export class Enhancer {
         if (fileList.length > 0) {
             lines.push(
                 locale === 'zh'
-                    ? `${labels.files}：${fileList.join('，')}。`
-                    : `${labels.files}: ${fileList.join(', ')}.`,
+                    ? `> ${labels.files}：${fileList.join('，')}。`
+                    : `> ${labels.files}: ${fileList.join(', ')}.`,
             );
         }
 
         if (gitContext?.branch) {
             lines.push(
                 locale === 'zh'
-                    ? `${labels.branch}：${gitContext.branch}。`
-                    : `${labels.branch}: ${gitContext.branch}.`,
+                    ? `> ${labels.branch}：${gitContext.branch}。`
+                    : `> ${labels.branch}: ${gitContext.branch}.`,
             );
         }
 
         const focusItems = this._getInlineFocus(strategy, locale);
         if (focusItems.length > 0) {
-            lines.push(`${labels.focus}${locale === 'zh' ? '：' : ':'}`);
+            lines.push('');
+            lines.push(`### 🎯 ${labels.focus}${locale === 'zh' ? '：' : ':'}`);
             for (const item of focusItems) {
                 lines.push(`- ${item}`);
             }
