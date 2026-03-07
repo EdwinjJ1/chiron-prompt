@@ -127,6 +127,7 @@ function patchInputPrompt(source, enhancerPath) {
     throw new Error('Overlay Gemini CLI already appears to be patched with Chiron');
   }
 
+  // --- Anchor 1: imports (stable across versions) ---
   const importAnchor = "import { useUIActions } from '../contexts/UIActionsContext.js';";
   const importBlock = `${importAnchor}
 import { execFile } from 'node:child_process';
@@ -135,13 +136,17 @@ const execFileAsync = promisify(execFile);
 const CHIRON_DOUBLE_CTRL_E_TIMEOUT_MS = 500;
 const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
 
+  // --- Anchor 2: refs after expandedSuggestionIndex (stable across versions) ---
   const refsAnchor = "    const [expandedSuggestionIndex, setExpandedSuggestionIndex] = useState(-1);";
   const refsBlock = `${refsAnchor}
     const ctrlEPressCount = useRef(0);
     const ctrlETimerRef = useRef(null);
     const ctrlEEnhancingRef = useRef(false);`;
 
-  const callbackAnchor = `    const resetEscapeState = useCallback(() => {
+  // --- Anchor 3: callback injection point ---
+  // v0.32+ uses useRepeatedKeyPress hook; older versions use manual useCallback.
+  // We detect which pattern is present and pick the right anchor.
+  const callbackAnchorLegacy = `    const resetEscapeState = useCallback(() => {
         if (escapeTimerRef.current) {
             clearTimeout(escapeTimerRef.current);
             escapeTimerRef.current = null;
@@ -150,7 +155,35 @@ const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
         setShowEscapePrompt(false);
     }, []);`;
 
-  const callbackBlock = `${callbackAnchor}
+  // In v0.32+, the cleanup effect only has pasteTimeoutRef (no escapeTimerRef).
+  const cleanupAnchorModern = `    useEffect(() => () => {
+        if (pasteTimeoutRef.current) {
+            clearTimeout(pasteTimeoutRef.current);
+        }
+    }, []);`;
+
+  const cleanupAnchorLegacy = `    useEffect(() => () => {
+        if (escapeTimerRef.current) {
+            clearTimeout(escapeTimerRef.current);
+        }
+        if (pasteTimeoutRef.current) {
+            clearTimeout(pasteTimeoutRef.current);
+        }
+    }, []);`;
+
+  const isModern = !source.includes(callbackAnchorLegacy);
+
+  let callbackAnchor;
+  let callbackBlock;
+  let cleanupAnchor;
+  let cleanupBlock;
+  let keyResetAnchor;
+  let keyResetBlock;
+
+  if (isModern) {
+    // v0.32+: inject Chiron callbacks after the cleanup useEffect
+    callbackAnchor = cleanupAnchorModern;
+    callbackBlock = `${cleanupAnchorModern}
     const resetCtrlEState = useCallback(() => {
         if (ctrlETimerRef.current) {
             clearTimeout(ctrlETimerRef.current);
@@ -210,16 +243,89 @@ const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
         setQueueErrorMessage,
     ]);`;
 
-  const cleanupAnchor = `    useEffect(() => () => {
-        if (escapeTimerRef.current) {
-            clearTimeout(escapeTimerRef.current);
-        }
-        if (pasteTimeoutRef.current) {
-            clearTimeout(pasteTimeoutRef.current);
-        }
-    }, []);`;
+    // In modern version, cleanup already has no escapeTimerRef, so we just add ctrlETimerRef
+    // But since we used the cleanupAnchor as callbackAnchor, we skip separate cleanup patching.
+    // Instead we handle ctrlETimerRef cleanup in a separate useEffect injected in the callbackBlock above.
+    // Actually we need to NOT patch cleanup separately since we already consumed that anchor.
+    cleanupAnchor = null;
+    cleanupBlock = null;
 
-  const cleanupBlock = `    useEffect(() => () => {
+    // v0.32+: key reset is simpler
+    keyResetAnchor = `        // Reset ESC count and hide prompt on any non-ESC key
+        if (key.name !== 'escape') {
+            resetEscapeState();
+        }`;
+
+    keyResetBlock = `${keyResetAnchor}
+        const isChironCtrlE = key.name === 'e' && key.ctrl === true && !key.meta && !key.shift;
+        if (!isChironCtrlE && ctrlEPressCount.current > 0) {
+            resetCtrlEState();
+        }`;
+  } else {
+    // Legacy (pre v0.32)
+    callbackAnchor = callbackAnchorLegacy;
+    callbackBlock = `${callbackAnchorLegacy}
+    const resetCtrlEState = useCallback(() => {
+        if (ctrlETimerRef.current) {
+            clearTimeout(ctrlETimerRef.current);
+            ctrlETimerRef.current = null;
+        }
+        ctrlEPressCount.current = 0;
+    }, []);
+    const runChironEnhancer = useCallback(async (rawInput) => {
+        const { stdout: enhancedText } = await execFileAsync('node', [CHIRON_ENHANCER_PATH, rawInput], {
+            cwd: config.getTargetDir(),
+            env: { ...process.env },
+            maxBuffer: 10 * 1024 * 1024,
+        });
+        return enhancedText.trim();
+    }, [config]);
+    const handleCtrlEEnhanceInPlace = useCallback(async () => {
+        if (ctrlEEnhancingRef.current) {
+            return;
+        }
+        const rawInput = buffer.text.trim();
+        if (!rawInput) {
+            return;
+        }
+        ctrlEEnhancingRef.current = true;
+        const savedInput = rawInput;
+        buffer.setText('🏹 Chiron enhancing... (' + savedInput + ')');
+        buffer.move('end');
+        try {
+            const enhancedText = await runChironEnhancer(savedInput);
+            if (!enhancedText) {
+                buffer.setText(savedInput);
+                buffer.move('end');
+                return;
+            }
+            buffer.setText(enhancedText);
+            buffer.move('end');
+            resetCompletionState();
+            resetReverseSearchCompletionState();
+            resetCommandSearchCompletionState();
+            setExpandedSuggestionIndex(-1);
+        }
+        catch (error) {
+            buffer.setText(savedInput);
+            buffer.move('end');
+            const message = error instanceof Error ? error.message : 'Chiron enhancement failed';
+            setQueueErrorMessage(\`Chiron enhance failed: \${message}\`);
+        }
+        finally {
+            ctrlEEnhancingRef.current = false;
+        }
+    }, [
+        buffer,
+        resetCompletionState,
+        resetReverseSearchCompletionState,
+        resetCommandSearchCompletionState,
+        runChironEnhancer,
+        setQueueErrorMessage,
+    ]);`;
+
+    cleanupAnchor = cleanupAnchorLegacy;
+    cleanupBlock = `    useEffect(() => () => {
         if (escapeTimerRef.current) {
             clearTimeout(escapeTimerRef.current);
         }
@@ -231,23 +337,34 @@ const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
         }
     }, []);`;
 
-  const keyResetAnchor = `        // Reset ESC count and hide prompt on any non-ESC key
+    keyResetAnchor = `        // Reset ESC count and hide prompt on any non-ESC key
         if (key.name !== 'escape') {
             if (escPressCount.current > 0 || showEscapePrompt) {
                 resetEscapeState();
             }
         }`;
 
-  const keyResetBlock = `${keyResetAnchor}
+    keyResetBlock = `${keyResetAnchor}
         const isChironCtrlE = key.name === 'e' && key.ctrl === true && !key.meta && !key.shift;
         if (!isChironCtrlE && ctrlEPressCount.current > 0) {
             resetCtrlEState();
         }`;
+  }
 
-  const endAnchor = `        if (keyMatchers[Command.END](key)) {
+  // --- Anchor: END key handler (detect return style) ---
+  const endAnchorModern = `        if (keyMatchers[Command.END](key)) {
+            buffer.move('end');
+            return true;
+        }`;
+
+  const endAnchorLegacy = `        if (keyMatchers[Command.END](key)) {
             buffer.move('end');
             return;
         }`;
+
+  const hasModernReturn = source.includes(endAnchorModern);
+  const endAnchor = hasModernReturn ? endAnchorModern : endAnchorLegacy;
+  const returnStatement = hasModernReturn ? 'return true;' : 'return;';
 
   const endBlock = `        if (isChironCtrlE) {
             if (ctrlEPressCount.current === 0) {
@@ -264,22 +381,22 @@ const CHIRON_ENHANCER_PATH = ${JSON.stringify(enhancerPath)};`;
                 resetCtrlEState();
                 void handleCtrlEEnhanceInPlace();
             }
-            return;
+            ${returnStatement}
         }
-        if (keyMatchers[Command.END](key)) {
-            buffer.move('end');
-            return;
-        }`;
+        ${endAnchor}`;
 
-  let patched = source;
-  for (const [anchor, replacement] of [
+  // Build patch list (skip null entries for modern path where cleanup is merged)
+  const patches = [
     [importAnchor, importBlock],
     [refsAnchor, refsBlock],
     [callbackAnchor, callbackBlock],
-    [cleanupAnchor, cleanupBlock],
+    cleanupAnchor ? [cleanupAnchor, cleanupBlock] : null,
     [keyResetAnchor, keyResetBlock],
     [endAnchor, endBlock],
-  ]) {
+  ].filter(Boolean);
+
+  let patched = source;
+  for (const [anchor, replacement] of patches) {
     if (!patched.includes(anchor)) {
       throw new Error(`Unable to patch overlay Gemini CLI: missing anchor\n${anchor}`);
     }

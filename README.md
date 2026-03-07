@@ -140,6 +140,16 @@ What it does:
 | `Ctrl+E` × 2 (within 500 ms) | **Enhance prompt in place** (shows `🏹 Chiron enhancing...`), keep editing |
 | `Enter` | Submit as normal |
 
+Updating the overlay:
+
+If you update your global Gemini CLI (e.g. `npm update -g @google/gemini-cli`), re-run the installer to bring the overlay up to date:
+
+```bash
+node cli/bin/install-gemini-overlay.mjs
+```
+
+> **Important:** After updating, you must **quit all running `gemini` sessions** and start new ones. Already-running processes still use the old code loaded into memory.
+
 Rollback:
 
 ```bash
@@ -232,6 +242,7 @@ The implementation behind this flow lives in:
 | In-place patch | Patch global Gemini CLI directly | [cli/bin/install-gemini-inplace-enhance.mjs](cli/bin/install-gemini-inplace-enhance.mjs) |
 | Manual patch | `git apply` the `.patch` file yourself | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | Repo-aware slash command in Claude Code | [.claude/commands/e.md](.claude/commands/e.md) |
+| OpenAI Codex TUI | Double `Ctrl+E` enhance-in-place for Codex open-source clone | [cli/patches/codex/](cli/patches/codex/) |
 | Skill only | Reusable prompt-enhancement behavior without CLI wiring | [SKILL.md](SKILL.md) |
 
 ## Repository Layout
@@ -294,6 +305,19 @@ Rollback: `rm -f ~/.local/bin/gemini && rm -rf ~/.chiron && hash -r`
 
 1. Run `node cli/bin/install-gemini-inplace-enhance.mjs`, or
 2. `git apply` the patch per [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md).
+
+### Option F: OpenAI Codex TUI
+
+Chiron directly supports enhancing prompts in the open-source [OpenAI Codex](https://github.com/openai/codex) terminal client with the same double `Ctrl+E` experience.
+
+```bash
+git clone https://github.com/openai/codex.git /tmp/openai-codex
+node cli/bin/install-codex-source-enhance.mjs --codex-root /tmp/openai-codex
+cd /tmp/openai-codex/codex-rs
+cargo build --bin codex
+export CHIRON_ENHANCER_PATH=~/.chiron/cli/bin/chiron-enhance.mjs
+cargo run --bin codex
+```
 
 > Most users should start with **Option A** or **Option D**.
 

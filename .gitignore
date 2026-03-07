@@ -167,3 +167,4 @@ cli/tui/dist/
 
 # Prompt Library Log (User Data)
 prompt-history/
+.codex/

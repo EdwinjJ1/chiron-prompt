@@ -1,0 +1,290 @@
+diff --git a/codex-rs/tui/src/bottom_pane/chat_composer.rs b/codex-rs/tui/src/bottom_pane/chat_composer.rs
+index c561052..6e2f0a2 100644
+--- a/codex-rs/tui/src/bottom_pane/chat_composer.rs
++++ b/codex-rs/tui/src/bottom_pane/chat_composer.rs
+@@ -222,6 +222,7 @@ use std::collections::HashSet;
+ use std::collections::VecDeque;
+ use std::ops::Range;
+ use std::path::PathBuf;
++use std::process::Command;
+ use std::sync::Arc;
+ #[cfg(not(target_os = "linux"))]
+ use std::sync::Mutex;
+@@ -236,6 +237,9 @@ use tokio::runtime::Handle;
+ /// If the pasted content exceeds this number of characters, replace it with a
+ /// placeholder in the UI.
+ const LARGE_PASTE_CHAR_THRESHOLD: usize = 1000;
++const CHIRON_DOUBLE_CTRL_E_TIMEOUT: Duration = Duration::from_millis(500);
++const CHIRON_ENHANCER_ENV: &str = "CHIRON_ENHANCER_PATH";
++const CHIRON_DEFAULT_ENHANCE_BACKEND: &str = "local";
+ 
+ fn user_input_too_large_message(actual_chars: usize) -> String {
+     format!(
+@@ -368,6 +372,7 @@ pub(crate) struct ChatComposer {
+     attached_images: Vec<AttachedImage>,
+     placeholder_text: String,
+     voice_state: VoiceState,
++    last_ctrl_e_press_at: Option<Instant>,
+     // Spinner control flags keyed by placeholder id; set to true to stop.
+     spinner_stop_flags: HashMap<String, Arc<AtomicBool>>,
+     is_task_running: bool,
+@@ -495,6 +500,7 @@ impl ChatComposer {
+             attached_images: Vec::new(),
+             placeholder_text,
+             voice_state: VoiceState::new(enhanced_keys_supported),
++            last_ctrl_e_press_at: None,
+             spinner_stop_flags: HashMap::new(),
+             is_task_running: false,
+             input_enabled: true,
+@@ -959,7 +965,6 @@ impl ChatComposer {
+         urls
+     }
+ 
+-    #[cfg(test)]
+     pub(crate) fn show_footer_flash(&mut self, line: Line<'static>, duration: Duration) {
+         let expires_at = Instant::now()
+             .checked_add(duration)
+@@ -973,6 +978,135 @@ impl ChatComposer {
+             .is_some_and(|flash| Instant::now() < flash.expires_at)
+     }
+ 
++    fn clear_ctrl_e_shortcut_state(&mut self) {
++        self.last_ctrl_e_press_at = None;
++    }
++
++    fn is_ctrl_e_shortcut(key_event: &KeyEvent) -> bool {
++        matches!(
++            key_event,
++            KeyEvent {
++                code: KeyCode::Char(c),
++                modifiers,
++                kind: KeyEventKind::Press,
++                ..
++            } if *modifiers == KeyModifiers::CONTROL && c.eq_ignore_ascii_case(&'e')
++        )
++    }
++
++    fn resolve_chiron_enhancer_path(&self) -> Result<PathBuf, String> {
++        if let Some(path) = std::env::var_os(CHIRON_ENHANCER_ENV).map(PathBuf::from) {
++            if path.is_file() {
++                return Ok(path);
++            }
++            return Err(format!(
++                "{CHIRON_ENHANCER_ENV} points to a missing file: {}",
++                path.display()
++            ));
++        }
++
++        let home = std::env::var_os("HOME")
++            .or_else(|| std::env::var_os("USERPROFILE"))
++            .map(PathBuf::from)
++            .ok_or_else(|| {
++                format!(
++                    "Could not resolve a Chiron enhancer path. Set {CHIRON_ENHANCER_ENV} first."
++                )
++            })?;
++        let path = home.join(".chiron/cli/bin/chiron-enhance.mjs");
++        if path.is_file() {
++            Ok(path)
++        } else {
++            Err(format!(
++                "Chiron enhancer not found at {}. Set {CHIRON_ENHANCER_ENV} or install Chiron runtime first.",
++                path.display()
++            ))
++        }
++    }
++
++    fn run_chiron_enhancer(&self, raw_input: &str) -> Result<String, String> {
++        let enhancer_path = self.resolve_chiron_enhancer_path()?;
++        let output = Command::new(&enhancer_path)
++            .arg(raw_input)
++            .env("CHIRON_ENHANCE_BACKEND", CHIRON_DEFAULT_ENHANCE_BACKEND)
++            .output()
++            .map_err(|err| format!("failed to launch {}: {err}", enhancer_path.display()))?;
++
++        if !output.status.success() {
++            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
++            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
++            let detail = if !stderr.is_empty() {
++                stderr
++            } else if !stdout.is_empty() {
++                stdout
++            } else {
++                format!("process exited with {}", output.status)
++            };
++            return Err(detail);
++        }
++
++        let enhanced = String::from_utf8_lossy(&output.stdout).trim().to_string();
++        if enhanced.is_empty() {
++            return Err("enhancer returned empty output".to_string());
++        }
++        Ok(enhanced)
++    }
++
++    fn enhance_current_draft_in_place(&mut self) -> Result<(), String> {
++        if let Some(pasted) = self.paste_burst.flush_before_modified_input() {
++            self.handle_paste(pasted);
++        }
++
++        if !self.textarea.text_elements().is_empty()
++            || !self.attached_images.is_empty()
++            || !self.remote_image_urls.is_empty()
++        {
++            return Err("remove mentions or image attachments before enhancing".to_string());
++        }
++
++        let raw_input = self.current_text_with_pending();
++        if raw_input.trim().is_empty() {
++            return Err("nothing to enhance".to_string());
++        }
++
++        let enhanced = self.run_chiron_enhancer(raw_input.trim())?;
++        self.set_text_content(enhanced, Vec::new(), Vec::new());
++        self.move_cursor_to_end();
++        Ok(())
++    }
++
++    fn handle_ctrl_e_shortcut(&mut self, key_event: &KeyEvent) -> Option<(InputResult, bool)> {
++        if !Self::is_ctrl_e_shortcut(key_event) {
++            if matches!(key_event.kind, KeyEventKind::Press) {
++                self.clear_ctrl_e_shortcut_state();
++            }
++            return None;
++        }
++
++        let now = Instant::now();
++        let is_second_press = self
++            .last_ctrl_e_press_at
++            .is_some_and(|last| now.saturating_duration_since(last) <= CHIRON_DOUBLE_CTRL_E_TIMEOUT);
++
++        if is_second_press {
++            self.clear_ctrl_e_shortcut_state();
++            match self.enhance_current_draft_in_place() {
++                Ok(()) => Some((InputResult::None, true)),
++                Err(err) => {
++                    self.show_footer_flash(
++                        Line::from(format!("Chiron enhance failed: {err}")),
++                        Duration::from_secs(4),
++                    );
++                    Some((InputResult::None, true))
++                }
++            }
++        } else {
++            self.last_ctrl_e_press_at = Some(now);
++            self.textarea.move_cursor_to_end_of_line(true);
++            Some((InputResult::None, true))
++        }
++    }
++
+     /// Replace the entire composer content with `text` and reset cursor.
+     ///
+     /// This is the "fresh draft" path: it clears pending paste payloads and
+@@ -1325,6 +1459,11 @@ impl ChatComposer {
+             return result;
+         }
+ 
++        if let Some(result) = self.handle_ctrl_e_shortcut(&key_event) {
++            self.sync_popups();
++            return result;
++        }
++
+         let result = match &mut self.active_popup {
+             ActivePopup::Command(_) => self.handle_key_event_with_slash_popup(key_event),
+             ActivePopup::File(_) => self.handle_key_event_with_file_popup(key_event),
+@@ -4494,7 +4633,11 @@ mod tests {
+     use image::ImageBuffer;
+     use image::Rgba;
+     use pretty_assertions::assert_eq;
++    use std::fs;
++    #[cfg(unix)]
++    use std::os::unix::fs::PermissionsExt;
+     use std::path::PathBuf;
++    use std::sync::Mutex;
+     use tempfile::tempdir;
+ 
+     use crate::app_event::AppEvent;
+@@ -4509,6 +4652,37 @@ mod tests {
+     use crate::bottom_pane::textarea::TextArea;
+     use tokio::sync::mpsc::unbounded_channel;
+ 
++    static CHIRON_ENV_MUTEX: Mutex<()> = Mutex::new(());
++
++    fn new_test_composer() -> ChatComposer {
++        let (tx, _rx) = unbounded_channel::<AppEvent>();
++        let sender = AppEventSender::new(tx);
++        ChatComposer::new(
++            true,
++            sender,
++            false,
++            "Ask Codex to do anything".to_string(),
++            false,
++        )
++    }
++
++    #[cfg(unix)]
++    fn create_mock_chiron_enhancer(output: &str) -> (tempfile::TempDir, PathBuf) {
++        let dir = tempdir().expect("create temp dir");
++        let path = dir.path().join("mock-chiron-enhancer");
++        fs::write(
++            &path,
++            format!("#!/bin/sh\nprintf '%s' '{}'\n", output.replace('\'', "'\"'\"'")),
++        )
++        .expect("write mock enhancer");
++        let mut perms = fs::metadata(&path)
++            .expect("stat mock enhancer")
++            .permissions();
++        perms.set_mode(0o755);
++        fs::set_permissions(&path, perms).expect("chmod mock enhancer");
++        (dir, path)
++    }
++
+     #[test]
+     fn footer_hint_row_is_separated_from_composer() {
+         let (tx, _rx) = unbounded_channel::<AppEvent>();
+@@ -4563,6 +4737,45 @@ mod tests {
+         );
+     }
+ 
++    #[test]
++    fn single_ctrl_e_moves_cursor_to_end_of_line() {
++        let mut composer = new_test_composer();
++        composer.set_text_content("hello\nworld".to_string(), Vec::new(), Vec::new());
++        composer.textarea.set_cursor(2);
++
++        let (result, redraw) =
++            composer.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL));
++
++        assert_eq!(result, InputResult::None);
++        assert!(redraw);
++        assert_eq!(composer.textarea.cursor(), 5);
++    }
++
++    #[test]
++    #[cfg(unix)]
++    fn double_ctrl_e_replaces_draft_with_enhanced_text() {
++        let _guard = CHIRON_ENV_MUTEX.lock().expect("lock CHIRON env");
++        let (_dir, script) = create_mock_chiron_enhancer("enhanced prompt");
++        // SAFETY: tests serialize access to the CHIRON env vars via CHIRON_ENV_MUTEX.
++        unsafe { std::env::set_var(CHIRON_ENHANCER_ENV, &script) };
++
++        let mut composer = new_test_composer();
++        composer.set_text_content("rough request".to_string(), Vec::new(), Vec::new());
++        composer.move_cursor_to_end();
++
++        let _ = composer.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL));
++        let (result, redraw) =
++            composer.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL));
++
++        assert_eq!(result, InputResult::None);
++        assert!(redraw);
++        assert_eq!(composer.current_text_with_pending(), "enhanced prompt");
++        assert_eq!(composer.textarea.cursor(), "enhanced prompt".len());
++
++        // SAFETY: tests serialize access to the CHIRON env vars via CHIRON_ENV_MUTEX.
++        unsafe { std::env::remove_var(CHIRON_ENHANCER_ENV) };
++    }
++
+     #[test]
+     fn footer_flash_overrides_footer_hint_override() {
+         let (tx, _rx) = unbounded_channel::<AppEvent>();

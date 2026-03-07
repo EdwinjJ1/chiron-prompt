@@ -149,6 +149,23 @@ function sanitizeGeminiResponse(value) {
   return result;
 }
 
+function enhanceLocally({
+  rawPrompt,
+  strategy,
+  projectContext,
+  relevantFiles,
+  gitContext,
+  enhancer,
+}) {
+  return enhancer.enhanceInline({
+    rawPrompt,
+    strategy,
+    projectContext,
+    relevantFiles,
+    gitContext,
+  });
+}
+
 async function enhanceWithGemini({
   rawPrompt,
   strategy,
@@ -194,6 +211,40 @@ async function enhanceWithGemini({
   }
 }
 
+async function enhancePrompt({
+  backend,
+  rawPrompt,
+  strategy,
+  projectContext,
+  relevantFiles,
+  gitContext,
+  enhancer,
+}) {
+  switch (backend) {
+    case 'local':
+      return enhanceLocally({
+        rawPrompt,
+        strategy,
+        projectContext,
+        relevantFiles,
+        gitContext,
+        enhancer,
+      });
+    case 'gemini':
+      return enhanceWithGemini({
+        rawPrompt,
+        strategy,
+        projectContext,
+        relevantFiles,
+        gitContext,
+      });
+    default:
+      throw new Error(
+        `Unsupported CHIRON_ENHANCE_BACKEND: ${backend}. Expected "gemini" or "local".`,
+      );
+  }
+}
+
 async function main() {
   const rawArg = process.argv.slice(2).join(' ').trim();
   if (!rawArg) {
@@ -213,12 +264,15 @@ async function main() {
   const gitContext = await contextEngine.getGitContext();
 
   const strategy = enhancer.detectStrategy(rawPrompt);
-  const enhanced = await enhanceWithGemini({
+  const backend = (process.env.CHIRON_ENHANCE_BACKEND || 'gemini').trim().toLowerCase();
+  const enhanced = await enhancePrompt({
+    backend,
     rawPrompt,
     strategy,
     projectContext,
     relevantFiles,
     gitContext,
+    enhancer,
   });
 
   process.stdout.write(enhanced);

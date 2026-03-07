@@ -225,6 +225,7 @@ flowchart TD
 | 直接 patch | 直接修改全局 Gemini CLI | [cli/bin/install-gemini-inplace-enhance.mjs](cli/bin/install-gemini-inplace-enhance.mjs) |
 | 手动 patch | 自己 `git apply` .patch 文件 | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | 想在 Claude Code 里使用仓库感知增强 | [.claude/commands/e.md](.claude/commands/e.md) |
+| OpenAI Codex TUI | 给 Codex 开源克隆版添加双击 `Ctrl+E` 原地增强 | [cli/patches/codex/](cli/patches/codex/) |
 | 仅 skill | 只想复用增强逻辑 | [SKILL.md](SKILL.md) |
 
 ## 仓库结构
@@ -287,6 +288,19 @@ node cli/bin/install-gemini-overlay.mjs
 
 1. 运行 `node cli/bin/install-gemini-inplace-enhance.mjs`，或
 2. 按 [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) 手动 `git apply`。
+
+### 方式 F：OpenAI Codex TUI 体验
+
+如果你使用开源的 [OpenAI Codex](https://github.com/openai/codex) 终端客户端，Chiron 同样支持双击 `Ctrl+E` 的无缝增强体验。
+
+```bash
+git clone https://github.com/openai/codex.git /tmp/openai-codex
+node cli/bin/install-codex-source-enhance.mjs --codex-root /tmp/openai-codex
+cd /tmp/openai-codex/codex-rs
+cargo build --bin codex
+export CHIRON_ENHANCER_PATH=~/.chiron/cli/bin/chiron-enhance.mjs
+cargo run --bin codex
+```
 
 > 大多数用户从 **方式 A** 或 **方式 D** 开始就够了。
 

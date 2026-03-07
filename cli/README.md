@@ -44,6 +44,7 @@ If you only want the reusable skill behavior, go back to [SKILL.md](../SKILL.md)
 | `bin/install-gemini-command.mjs` | installs Chiron as a slash command into your existing global Gemini CLI |
 | `bin/install-gemini-overlay.mjs` | **one-command installer**: copies Gemini CLI into `~/.chiron/gemini-cli`, patches it with double `Ctrl+E`, writes `~/.local/bin/gemini` wrapper |
 | `bin/install-gemini-inplace-enhance.mjs` | patches your **global** Gemini CLI in place with double `Ctrl+E` (backs up original) |
+| `bin/install-codex-source-enhance.mjs` | patches an **OpenAI Codex** source tree and copies Chiron runtime to build a native enhance-in-place TUI |
 | `bin/chiron-enhance.mjs` | main enhancer entrypoint for CLI integrations |
 | `bin/chiron.mjs` | small CLI wrapper for local server usage |
 | `src/context-engine.mjs` | scans the repo, stack, files, and git context |
@@ -112,6 +113,14 @@ Usage:
 5. Press `Ctrl+E` once → move to end of line
 6. Press `Ctrl+E` again within 500 ms → **replace input with enhanced prompt**
 
+Updating after a Gemini CLI upgrade:
+
+```bash
+node cli/bin/install-gemini-overlay.mjs
+```
+
+> **Important:** After updating, quit all running `gemini` sessions and start fresh. Already-running processes keep the old code in memory.
+
 Rollback:
 
 ```bash
@@ -146,6 +155,21 @@ Full details: [patches/gemini-cli/README.md](patches/gemini-cli/README.md)
 The project also ships [.claude/commands/e.md](../.claude/commands/e.md).
 
 With the MCP server configured, Claude Code can run the same repo-aware enhancement flow through a visible slash command.
+
+### 6. OpenAI Codex TUI (Double Ctrl+E)
+
+Chiron also natively patches the open-source [OpenAI Codex](https://github.com/openai/codex) terminal client. The installation flow uses `bin/install-codex-source-enhance.mjs` to patch the Rust core and build a new binary:
+
+```bash
+git clone https://github.com/openai/codex.git /tmp/openai-codex
+node cli/bin/install-codex-source-enhance.mjs --codex-root /tmp/openai-codex
+cd /tmp/openai-codex/codex-rs
+cargo build --bin codex
+export CHIRON_ENHANCER_PATH=~/.chiron/cli/bin/chiron-enhance.mjs
+cargo run --bin codex
+```
+
+Inside Codex TUI, it also uses the double `Ctrl+E` enhance-in-place flow.
 
 ## Quick Setup
 

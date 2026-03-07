@@ -1,0 +1,73 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="60" x2="1460" y2="840" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08131A"/>
+      <stop offset="0.52" stop-color="#0E1F2A"/>
+      <stop offset="1" stop-color="#132E25"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="302" y1="174" x2="1297" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C1720"/>
+      <stop offset="1" stop-color="#111E28"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="324" y1="196" x2="1248" y2="718" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#69F0AE" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#FFB84D" stop-opacity="0.10"/>
+    </linearGradient>
+    <filter id="shadow" x="230" y="112" width="1138" height="702" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="18"/>
+      <feGaussianBlur stdDeviation="26"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0104167 0 0 0 0 0.0566319 0 0 0 0 0.0766027 0 0 0 0.42 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_2"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_2" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1328" cy="152" r="214" fill="#69F0AE" fill-opacity="0.08"/>
+  <circle cx="230" cy="760" r="250" fill="#FFB84D" fill-opacity="0.08"/>
+
+  <text x="160" y="136" fill="#E9F7EF" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="34" font-weight="700">Chiron</text>
+  <text x="160" y="176" fill="#9AB6A8" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="22">Free and open-source Augment-style prompt enhancement for Gemini CLI</text>
+
+  <g filter="url(#shadow)">
+    <rect x="282" y="164" width="1034" height="598" rx="28" fill="url(#panel)"/>
+    <rect x="282.75" y="164.75" width="1032.5" height="596.5" rx="27.25" stroke="#294250" stroke-opacity="0.75" stroke-width="1.5"/>
+    <rect x="304" y="186" width="990" height="554" rx="22" fill="url(#glow)"/>
+  </g>
+
+  <circle cx="338" cy="220" r="7" fill="#FF6B6B"/>
+  <circle cx="364" cy="220" r="7" fill="#FFB84D"/>
+  <circle cx="390" cy="220" r="7" fill="#69F0AE"/>
+  <text x="428" y="228" fill="#8FB2A6" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">gemini</text>
+
+  <rect x="344" y="264" width="328" height="356" rx="18" fill="#0A131B" fill-opacity="0.84" stroke="#203543"/>
+  <rect x="700" y="264" width="550" height="356" rx="18" fill="#0A131B" fill-opacity="0.92" stroke="#36503E"/>
+  <rect x="679" y="420" width="34" height="34" rx="17" fill="#132B24" stroke="#294A3A"/>
+  <path d="M688 437H703" stroke="#69F0AE" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M698 429L706 437L698 445" stroke="#69F0AE" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="374" y="308" fill="#FFB84D" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">Raw request</text>
+  <text x="730" y="308" fill="#69F0AE" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">Enhanced in Gemini CLI</text>
+
+  <text x="374" y="362" fill="#E7F5ED" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="28">❯ fix login bug</text>
+  <rect x="374" y="394" width="248" height="2" fill="#1D343E"/>
+  <text x="374" y="454" fill="#7B97A5" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="20">- vague task</text>
+  <text x="374" y="492" fill="#7B97A5" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="20">- no repo context</text>
+  <text x="374" y="530" fill="#7B97A5" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="20">- no files</text>
+  <text x="374" y="568" fill="#7B97A5" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="20">- no verification plan</text>
+
+  <text x="730" y="362" fill="#E7F5ED" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="23">❯ Fix the login flow bug in</text>
+  <text x="730" y="396" fill="#E7F5ED" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="23">  src/auth/middleware.ts.</text>
+  <text x="730" y="446" fill="#9FD7BF" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">Project stack: Next.js 14 + TypeScript + Prisma</text>
+  <text x="730" y="480" fill="#9FD7BF" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">Relevant files: src/auth/middleware.ts</text>
+  <text x="730" y="510" fill="#9FD7BF" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">src/api/auth/login.ts, src/lib/auth.ts</text>
+  <text x="730" y="560" fill="#FFD69A" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">Focus: auth flow, session handling, input validation</text>
+  <text x="730" y="590" fill="#FFD69A" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="18">Explain root cause, files changed, and verification.</text>
+
+  <rect x="344" y="646" width="906" height="62" rx="16" fill="#0A131B" fill-opacity="0.88" stroke="#243D4B"/>
+  <text x="374" y="685" fill="#DCEDE6" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="22">gemini → /chiron fix login bug</text>
+  <text x="920" y="685" fill="#69F0AE" font-family="SFMono-Regular, JetBrains Mono, Menlo, monospace" font-size="20">use your existing Gemini CLI</text>
+</svg>
