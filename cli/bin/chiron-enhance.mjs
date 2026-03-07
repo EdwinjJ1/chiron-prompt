@@ -208,19 +208,32 @@ async function enhanceWithGemini({
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'chiron-enhance-'));
 
   try {
-    const { stdout } = await execFileAsync(
-      geminiCmd,
-      ['-m', geminiModel, '-p', prompt],
-      {
-        cwd: tempDir,
-        timeout: Number.isFinite(timeoutMs) ? timeoutMs : 30000,
-        maxBuffer: MAX_BUFFER_BYTES,
-        env: {
-          ...process.env,
-          NO_COLOR: '1',
-        },
+    const effectiveTimeout = Number.isFinite(timeoutMs) ? timeoutMs : 30000;
+    const spawnOptions = {
+      cwd: tempDir,
+      timeout: effectiveTimeout,
+      maxBuffer: MAX_BUFFER_BYTES,
+      env: {
+        ...process.env,
+        NO_COLOR: '1',
       },
-    );
+    };
+
+    let stdout;
+    try {
+      ({ stdout } = await spawnWithStdin(
+        geminiCmd,
+        ['-m', geminiModel],
+        prompt,
+        spawnOptions,
+      ));
+    } catch {
+      ({ stdout } = await execFileAsync(
+        geminiCmd,
+        ['-m', geminiModel, '-p', prompt],
+        spawnOptions,
+      ));
+    }
 
     const cleaned = sanitizeGeminiResponse(stdout);
     if (!cleaned) {
