@@ -258,45 +258,26 @@ export class Enhancer {
 
     enhanceInline({ rawPrompt, strategy, projectContext, relevantFiles, gitContext }) {
         const locale = this._detectLocale(rawPrompt);
-        const labels = locale === 'zh'
-            ? {
-                task: '任务',
-                stack: '项目技术栈',
-                framework: '主要框架',
-                files: '相关文件',
-                branch: '当前分支',
-                focus: '重点',
-            }
-            : {
-                task: 'Task',
-                stack: 'Project stack',
-                framework: 'Primary framework',
-                files: 'Relevant files',
-                branch: 'Current branch',
-                focus: 'Focus areas',
-            };
 
         const lines = [];
 
-        // Ensure the full raw input text is clearly retained
-        lines.push(`## 📝 ${labels.task}`);
+        // Raw prompt at top
         lines.push(this._ensureTerminalPunctuation(rawPrompt, locale));
         lines.push('');
 
+        // Provide context naturally
+        const contextParts = [];
+
         const stack = this._getInlineStack(projectContext);
         if (stack) {
-            lines.push(
-                locale === 'zh'
-                    ? `> ${labels.stack}：${stack}。`
-                    : `> ${labels.stack}: ${stack}.`,
+            contextParts.push(
+                locale === 'zh' ? `项目技术栈为 ${stack}` : `Project stack is ${stack}`
             );
         }
 
         if (projectContext?.framework) {
-            lines.push(
-                locale === 'zh'
-                    ? `> ${labels.framework}：${projectContext.framework}。`
-                    : `> ${labels.framework}: ${projectContext.framework}.`,
+            contextParts.push(
+                locale === 'zh' ? `主要框架是 ${projectContext.framework}` : `Primary framework is ${projectContext.framework}`
             );
         }
 
@@ -305,28 +286,27 @@ export class Enhancer {
             .map((file) => file.path)
             .filter(Boolean);
         if (fileList.length > 0) {
-            lines.push(
-                locale === 'zh'
-                    ? `> ${labels.files}：${fileList.join('，')}。`
-                    : `> ${labels.files}: ${fileList.join(', ')}.`,
+            contextParts.push(
+                locale === 'zh' ? `相关文件有 ${fileList.join('，')}` : `Relevant files include ${fileList.join(', ')}`
             );
         }
 
         if (gitContext?.branch) {
-            lines.push(
-                locale === 'zh'
-                    ? `> ${labels.branch}：${gitContext.branch}。`
-                    : `> ${labels.branch}: ${gitContext.branch}.`,
+            contextParts.push(
+                locale === 'zh' ? `当前分支：${gitContext.branch}` : `Current branch: ${gitContext.branch}`
             );
         }
 
+        if (contextParts.length > 0) {
+            lines.push(contextParts.join('，') + '。');
+            lines.push('');
+        }
+
+        // Add guidelines as natural text
         const focusItems = this._getInlineFocus(strategy, locale);
         if (focusItems.length > 0) {
-            lines.push('');
-            lines.push(`### 🎯 ${labels.focus}${locale === 'zh' ? '：' : ':'}`);
-            for (const item of focusItems) {
-                lines.push(`- ${item}`);
-            }
+            const instructions = locale === 'zh' ? '在实现时请注意：' : 'Please keep in mind: ';
+            lines.push(instructions + focusItems.join('，') + '。');
         }
 
         return lines.join('\n');
