@@ -1,5 +1,5 @@
 diff --git a/codex-rs/tui/src/bottom_pane/chat_composer.rs b/codex-rs/tui/src/bottom_pane/chat_composer.rs
-index c561052..6e2f0a2 100644
+index c561052..bd55e8c 100644
 --- a/codex-rs/tui/src/bottom_pane/chat_composer.rs
 +++ b/codex-rs/tui/src/bottom_pane/chat_composer.rs
 @@ -222,6 +222,7 @@ use std::collections::HashSet;
@@ -44,7 +44,7 @@ index c561052..6e2f0a2 100644
      pub(crate) fn show_footer_flash(&mut self, line: Line<'static>, duration: Duration) {
          let expires_at = Instant::now()
              .checked_add(duration)
-@@ -973,6 +978,135 @@ impl ChatComposer {
+@@ -973,6 +978,141 @@ impl ChatComposer {
              .is_some_and(|flash| Instant::now() < flash.expires_at)
      }
  
@@ -160,6 +160,12 @@ index c561052..6e2f0a2 100644
 +
 +        if is_second_press {
 +            self.clear_ctrl_e_shortcut_state();
++            // Show inline indication before blocking to exec
++            self.set_text_content("🏹 Chiron enhancing...".to_string(), Vec::new(), Vec::new());
++            
++            // Allow ratatui to draw this draft momentarily (flush UI events)
++            let _ = std::io::Write::flush(&mut std::io::stdout());
++
 +            match self.enhance_current_draft_in_place() {
 +                Ok(()) => Some((InputResult::None, true)),
 +                Err(err) => {
@@ -180,7 +186,7 @@ index c561052..6e2f0a2 100644
      /// Replace the entire composer content with `text` and reset cursor.
      ///
      /// This is the "fresh draft" path: it clears pending paste payloads and
-@@ -1325,6 +1459,11 @@ impl ChatComposer {
+@@ -1325,6 +1465,11 @@ impl ChatComposer {
              return result;
          }
  
@@ -192,7 +198,7 @@ index c561052..6e2f0a2 100644
          let result = match &mut self.active_popup {
              ActivePopup::Command(_) => self.handle_key_event_with_slash_popup(key_event),
              ActivePopup::File(_) => self.handle_key_event_with_file_popup(key_event),
-@@ -4494,7 +4633,11 @@ mod tests {
+@@ -4494,7 +4639,11 @@ mod tests {
      use image::ImageBuffer;
      use image::Rgba;
      use pretty_assertions::assert_eq;
@@ -204,7 +210,7 @@ index c561052..6e2f0a2 100644
      use tempfile::tempdir;
  
      use crate::app_event::AppEvent;
-@@ -4509,6 +4652,37 @@ mod tests {
+@@ -4509,6 +4658,37 @@ mod tests {
      use crate::bottom_pane::textarea::TextArea;
      use tokio::sync::mpsc::unbounded_channel;
  
@@ -242,7 +248,7 @@ index c561052..6e2f0a2 100644
      #[test]
      fn footer_hint_row_is_separated_from_composer() {
          let (tx, _rx) = unbounded_channel::<AppEvent>();
-@@ -4563,6 +4737,45 @@ mod tests {
+@@ -4563,6 +4743,45 @@ mod tests {
          );
      }
  
