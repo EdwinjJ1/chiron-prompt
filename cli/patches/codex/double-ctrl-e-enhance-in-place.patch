@@ -1,5 +1,5 @@
 diff --git a/codex-rs/tui/src/bottom_pane/chat_composer.rs b/codex-rs/tui/src/bottom_pane/chat_composer.rs
-index c561052..bd55e8c 100644
+index c561052..2c1a888 100644
 --- a/codex-rs/tui/src/bottom_pane/chat_composer.rs
 +++ b/codex-rs/tui/src/bottom_pane/chat_composer.rs
 @@ -222,6 +222,7 @@ use std::collections::HashSet;
@@ -16,7 +16,7 @@ index c561052..bd55e8c 100644
  const LARGE_PASTE_CHAR_THRESHOLD: usize = 1000;
 +const CHIRON_DOUBLE_CTRL_E_TIMEOUT: Duration = Duration::from_millis(500);
 +const CHIRON_ENHANCER_ENV: &str = "CHIRON_ENHANCER_PATH";
-+const CHIRON_DEFAULT_ENHANCE_BACKEND: &str = "local";
++const CHIRON_DEFAULT_ENHANCE_BACKEND: &str = "gemini";
  
  fn user_input_too_large_message(actual_chars: usize) -> String {
      format!(
@@ -44,7 +44,7 @@ index c561052..bd55e8c 100644
      pub(crate) fn show_footer_flash(&mut self, line: Line<'static>, duration: Duration) {
          let expires_at = Instant::now()
              .checked_add(duration)
-@@ -973,6 +978,141 @@ impl ChatComposer {
+@@ -973,6 +978,144 @@ impl ChatComposer {
              .is_some_and(|flash| Instant::now() < flash.expires_at)
      }
  
@@ -96,9 +96,12 @@ index c561052..bd55e8c 100644
 +
 +    fn run_chiron_enhancer(&self, raw_input: &str) -> Result<String, String> {
 +        let enhancer_path = self.resolve_chiron_enhancer_path()?;
++        let backend = std::env::var("CHIRON_ENHANCE_BACKEND")
++            .unwrap_or_else(|_| CHIRON_DEFAULT_ENHANCE_BACKEND.to_string());
++        
 +        let output = Command::new(&enhancer_path)
 +            .arg(raw_input)
-+            .env("CHIRON_ENHANCE_BACKEND", CHIRON_DEFAULT_ENHANCE_BACKEND)
++            .env("CHIRON_ENHANCE_BACKEND", backend)
 +            .output()
 +            .map_err(|err| format!("failed to launch {}: {err}", enhancer_path.display()))?;
 +
@@ -186,7 +189,7 @@ index c561052..bd55e8c 100644
      /// Replace the entire composer content with `text` and reset cursor.
      ///
      /// This is the "fresh draft" path: it clears pending paste payloads and
-@@ -1325,6 +1465,11 @@ impl ChatComposer {
+@@ -1325,6 +1468,11 @@ impl ChatComposer {
              return result;
          }
  
@@ -198,7 +201,7 @@ index c561052..bd55e8c 100644
          let result = match &mut self.active_popup {
              ActivePopup::Command(_) => self.handle_key_event_with_slash_popup(key_event),
              ActivePopup::File(_) => self.handle_key_event_with_file_popup(key_event),
-@@ -4494,7 +4639,11 @@ mod tests {
+@@ -4494,7 +4642,11 @@ mod tests {
      use image::ImageBuffer;
      use image::Rgba;
      use pretty_assertions::assert_eq;
@@ -210,7 +213,7 @@ index c561052..bd55e8c 100644
      use tempfile::tempdir;
  
      use crate::app_event::AppEvent;
-@@ -4509,6 +4658,37 @@ mod tests {
+@@ -4509,6 +4661,37 @@ mod tests {
      use crate::bottom_pane::textarea::TextArea;
      use tokio::sync::mpsc::unbounded_channel;
  
@@ -248,7 +251,7 @@ index c561052..bd55e8c 100644
      #[test]
      fn footer_hint_row_is_separated_from_composer() {
          let (tx, _rx) = unbounded_channel::<AppEvent>();
-@@ -4563,6 +4743,45 @@ mod tests {
+@@ -4563,6 +4746,45 @@ mod tests {
          );
      }
  

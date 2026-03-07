@@ -114,8 +114,17 @@ def entry_markdown(
     safe_spec = redact(augmented_spec).strip()
     safe_result = redact(result_summary).strip()
 
-    if "sk-" in safe_original or "sk-" in safe_spec or "sk-" in safe_result:
-        raise SystemExit("Potential secret detected after redaction; refusing to log")
+    _SECRET_PREFIXES = ("sk-", "ghp_", "gho_", "ghu_", "ghs_", "ghat_", "AKIA", "AIza", "xox")
+    for field_name, field_value in [
+        ("original_request", safe_original),
+        ("augmented_spec", safe_spec),
+        ("result_summary", safe_result),
+    ]:
+        for prefix in _SECRET_PREFIXES:
+            if prefix in field_value and f"{prefix}[REDACTED]" not in field_value:
+                raise SystemExit(
+                    f"Potential secret detected in '{field_name}' after redaction; refusing to log"
+                )
 
     lines: list[str] = []
     lines.append(f"## {timestamp}")

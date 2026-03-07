@@ -108,10 +108,14 @@ export class ContextEngine {
 
         if (includeContent) {
             for (const item of limited) {
+                const absolutePath = path.join(this.cwd, item.path);
                 try {
-                    const content = await fs.readFile(
-                        path.join(this.cwd, item.path), 'utf-8'
-                    );
+                    const stat = await fs.stat(absolutePath);
+                    if (stat.size > 200_000) {
+                        item.content = '// file too large, skipped';
+                        continue;
+                    }
+                    const content = await fs.readFile(absolutePath, 'utf-8');
                     item.content = content.length > 3000
                         ? content.slice(0, 3000) + '\n// ... truncated'
                         : content;

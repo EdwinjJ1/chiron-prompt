@@ -256,60 +256,14 @@ export class Enhancer {
         return lines.join('\n');
     }
 
-    enhanceInline({ rawPrompt, strategy, projectContext, relevantFiles, gitContext }) {
+    enhanceInline({ rawPrompt }) {
+        // The user explicitly requested not to inject template-like context metadata
+        // (stack, files, focus areas) into the inline output.
+        // For the local fallback, we now simply return the original prompt nicely.
+        // For actual rewriting, CHIRON_ENHANCE_BACKEND=gemini should be used to 
+        // organically rewrite the prompt.
         const locale = this._detectLocale(rawPrompt);
-
-        const lines = [];
-
-        // Raw prompt at top
-        lines.push(this._ensureTerminalPunctuation(rawPrompt, locale));
-        lines.push('');
-
-        // Provide context naturally
-        const contextParts = [];
-
-        const stack = this._getInlineStack(projectContext);
-        if (stack) {
-            contextParts.push(
-                locale === 'zh' ? `项目技术栈为 ${stack}` : `Project stack is ${stack}`
-            );
-        }
-
-        if (projectContext?.framework) {
-            contextParts.push(
-                locale === 'zh' ? `主要框架是 ${projectContext.framework}` : `Primary framework is ${projectContext.framework}`
-            );
-        }
-
-        const fileList = (relevantFiles || [])
-            .slice(0, 6)
-            .map((file) => file.path)
-            .filter(Boolean);
-        if (fileList.length > 0) {
-            contextParts.push(
-                locale === 'zh' ? `相关文件有 ${fileList.join('，')}` : `Relevant files include ${fileList.join(', ')}`
-            );
-        }
-
-        if (gitContext?.branch) {
-            contextParts.push(
-                locale === 'zh' ? `当前分支：${gitContext.branch}` : `Current branch: ${gitContext.branch}`
-            );
-        }
-
-        if (contextParts.length > 0) {
-            lines.push(contextParts.join('，') + '。');
-            lines.push('');
-        }
-
-        // Add guidelines as natural text
-        const focusItems = this._getInlineFocus(strategy, locale);
-        if (focusItems.length > 0) {
-            const instructions = locale === 'zh' ? '在实现时请注意：' : 'Please keep in mind: ';
-            lines.push(instructions + focusItems.join('，') + '。');
-        }
-
-        return lines.join('\n');
+        return this._ensureTerminalPunctuation(rawPrompt, locale);
     }
 
     // ── Private formatters ─────────────────────────────────

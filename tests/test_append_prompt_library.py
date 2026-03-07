@@ -175,6 +175,30 @@ class TestEntryMarkdown:
             )
         assert "secret detected" in str(exc_info.value).lower()
 
+    def test_entry_with_github_token_fails(self):
+        with pytest.raises(SystemExit) as exc_info:
+            entry_markdown(
+                timestamp="2024-01-01T00:00:00Z",
+                original_request="token ghp_shorttoken",
+                upgrade_summary=[],
+                augmented_spec="",
+                artifacts=[],
+                result_summary="",
+            )
+        assert "secret detected" in str(exc_info.value).lower()
+
+    def test_entry_with_redacted_prefix_passes(self):
+        """Redacted tokens like ghp_[REDACTED] should not trigger rejection."""
+        result = entry_markdown(
+            timestamp="2024-01-01T00:00:00Z",
+            original_request="token: ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+            upgrade_summary=[],
+            augmented_spec="",
+            artifacts=[],
+            result_summary="",
+        )
+        assert "ghp_[REDACTED]" in result
+
     def test_empty_optional_fields(self):
         result = entry_markdown(
             timestamp="2024-01-01T00:00:00Z",

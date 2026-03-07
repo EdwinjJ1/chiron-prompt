@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -10,6 +10,28 @@ import { Enhancer } from '../src/enhancer.mjs';
 
 const execFileAsync = promisify(execFile)
 const MAX_BUFFER_BYTES = 10 * 1024 * 1024
+
+function spawnWithStdin(cmd, args, input, options) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      ...options,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const chunks = [];
+    child.stdout.on('data', (chunk) => chunks.push(chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      const stdout = Buffer.concat(chunks).toString('utf8');
+      if (code !== 0) {
+        reject(new Error(`${cmd} exited with code ${code}`));
+        return;
+      }
+      resolve({ stdout });
+    });
+    child.stdin.write(input);
+    child.stdin.end();
+  });
+}
 
 function extractExistingPrompt(value) {
   const originalRequestMatch = value.match(
