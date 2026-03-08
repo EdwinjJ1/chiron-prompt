@@ -18,15 +18,18 @@ function spawnWithStdin(cmd, args, input, options) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const chunks = [];
+    const errChunks = [];
     child.stdout.on('data', (chunk) => chunks.push(chunk));
+    child.stderr.on('data', (chunk) => errChunks.push(chunk));
     child.on('error', reject);
     child.on('close', (code) => {
       const stdout = Buffer.concat(chunks).toString('utf8');
+      const stderr = Buffer.concat(errChunks).toString('utf8');
       if (code !== 0) {
-        reject(new Error(`${cmd} exited with code ${code}`));
+        reject(new Error(`${cmd} exited with code ${code}. Stderr: ${stderr.trim()}`));
         return;
       }
-      resolve({ stdout });
+      resolve({ stdout, stderr });
     });
     child.stdin.write(input);
     child.stdin.end();
@@ -220,24 +223,32 @@ async function enhanceWithGemini({
     };
 
     let stdout;
+    let stderr = '';
     try {
-      ({ stdout } = await spawnWithStdin(
+      ({ stdout, stderr } = await spawnWithStdin(
         geminiCmd,
         ['-m', geminiModel],
         prompt,
         spawnOptions,
       ));
-    } catch {
-      ({ stdout } = await execFileAsync(
-        geminiCmd,
-        ['-m', geminiModel, '-p', prompt],
-        spawnOptions,
-      ));
+    } catch (err1) {
+      try {
+        const result = await execFileAsync(
+          geminiCmd,
+          ['-m', geminiModel, '-p', prompt],
+          spawnOptions,
+        );
+        stdout = result.stdout;
+        stderr = result.stderr;
+      } catch (err2) {
+        throw new Error(`Execution failed.\nspawn error: ${err1.message}\nexec error: ${err2.message || err2}`);
+      }
     }
 
-    const cleaned = sanitizeGeminiResponse(stdout);
+    const cleaned = sanitizeGeminiResponse(stdout || '');
     if (!cleaned) {
-      throw new Error('Gemini returned empty enhancement output');
+      const detail = stderr?.trim() ? `\nStderr output:\n${stderr.trim()}` : '';
+      throw new Error(`Gemini returned empty enhancement output.${detail}`);
     }
 
     return cleaned;
