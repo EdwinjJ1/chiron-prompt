@@ -1,8 +1,8 @@
 diff --git a/codex-rs/tui/src/bottom_pane/chat_composer.rs b/codex-rs/tui/src/bottom_pane/chat_composer.rs
-index c561052..2c1a888 100644
+index f314c5e..fac7ed9 100644
 --- a/codex-rs/tui/src/bottom_pane/chat_composer.rs
 +++ b/codex-rs/tui/src/bottom_pane/chat_composer.rs
-@@ -222,6 +222,7 @@ use std::collections::HashSet;
+@@ -224,6 +224,7 @@ use std::collections::HashSet;
  use std::collections::VecDeque;
  use std::ops::Range;
  use std::path::PathBuf;
@@ -10,17 +10,17 @@ index c561052..2c1a888 100644
  use std::sync::Arc;
  #[cfg(not(target_os = "linux"))]
  use std::sync::Mutex;
-@@ -236,6 +237,9 @@ use tokio::runtime::Handle;
+@@ -238,6 +239,9 @@ use tokio::runtime::Handle;
  /// If the pasted content exceeds this number of characters, replace it with a
  /// placeholder in the UI.
  const LARGE_PASTE_CHAR_THRESHOLD: usize = 1000;
-+const CHIRON_DOUBLE_CTRL_E_TIMEOUT: Duration = Duration::from_millis(500);
++const CHIRON_DOUBLE_CTRL_E_TIMEOUT: Duration = Duration::from_millis(800);
 +const CHIRON_ENHANCER_ENV: &str = "CHIRON_ENHANCER_PATH";
 +const CHIRON_DEFAULT_ENHANCE_BACKEND: &str = "gemini";
  
  fn user_input_too_large_message(actual_chars: usize) -> String {
      format!(
-@@ -368,6 +372,7 @@ pub(crate) struct ChatComposer {
+@@ -370,6 +374,7 @@ pub(crate) struct ChatComposer {
      attached_images: Vec<AttachedImage>,
      placeholder_text: String,
      voice_state: VoiceState,
@@ -28,7 +28,7 @@ index c561052..2c1a888 100644
      // Spinner control flags keyed by placeholder id; set to true to stop.
      spinner_stop_flags: HashMap<String, Arc<AtomicBool>>,
      is_task_running: bool,
-@@ -495,6 +500,7 @@ impl ChatComposer {
+@@ -499,6 +504,7 @@ impl ChatComposer {
              attached_images: Vec::new(),
              placeholder_text,
              voice_state: VoiceState::new(enhanced_keys_supported),
@@ -36,7 +36,7 @@ index c561052..2c1a888 100644
              spinner_stop_flags: HashMap::new(),
              is_task_running: false,
              input_enabled: true,
-@@ -959,7 +965,6 @@ impl ChatComposer {
+@@ -964,7 +970,6 @@ impl ChatComposer {
          urls
      }
  
@@ -44,7 +44,7 @@ index c561052..2c1a888 100644
      pub(crate) fn show_footer_flash(&mut self, line: Line<'static>, duration: Duration) {
          let expires_at = Instant::now()
              .checked_add(duration)
-@@ -973,6 +978,144 @@ impl ChatComposer {
+@@ -978,6 +983,144 @@ impl ChatComposer {
              .is_some_and(|flash| Instant::now() < flash.expires_at)
      }
  
@@ -58,7 +58,7 @@ index c561052..2c1a888 100644
 +            KeyEvent {
 +                code: KeyCode::Char(c),
 +                modifiers,
-+                kind: KeyEventKind::Press,
++                kind: KeyEventKind::Press | KeyEventKind::Repeat,
 +                ..
 +            } if *modifiers == KeyModifiers::CONTROL && c.eq_ignore_ascii_case(&'e')
 +        )
@@ -150,9 +150,9 @@ index c561052..2c1a888 100644
 +
 +    fn handle_ctrl_e_shortcut(&mut self, key_event: &KeyEvent) -> Option<(InputResult, bool)> {
 +        if !Self::is_ctrl_e_shortcut(key_event) {
-+            if matches!(key_event.kind, KeyEventKind::Press) {
-+                self.clear_ctrl_e_shortcut_state();
-+            }
++            // Do not clear the state here. When advanced keyboard protocols are used (like kitty),
++            // releasing the E key but holding Ctrl, or interacting with modifiers, can generate
++            // intermediate events that break the rapid double-press. We let the timeout handle expiration.
 +            return None;
 +        }
 +
@@ -189,7 +189,7 @@ index c561052..2c1a888 100644
      /// Replace the entire composer content with `text` and reset cursor.
      ///
      /// This is the "fresh draft" path: it clears pending paste payloads and
-@@ -1325,6 +1468,11 @@ impl ChatComposer {
+@@ -1330,6 +1473,11 @@ impl ChatComposer {
              return result;
          }
  
@@ -201,7 +201,7 @@ index c561052..2c1a888 100644
          let result = match &mut self.active_popup {
              ActivePopup::Command(_) => self.handle_key_event_with_slash_popup(key_event),
              ActivePopup::File(_) => self.handle_key_event_with_file_popup(key_event),
-@@ -4494,7 +4642,11 @@ mod tests {
+@@ -4497,7 +4645,11 @@ mod tests {
      use image::ImageBuffer;
      use image::Rgba;
      use pretty_assertions::assert_eq;
@@ -213,7 +213,7 @@ index c561052..2c1a888 100644
      use tempfile::tempdir;
  
      use crate::app_event::AppEvent;
-@@ -4509,6 +4661,37 @@ mod tests {
+@@ -4512,6 +4664,37 @@ mod tests {
      use crate::bottom_pane::textarea::TextArea;
      use tokio::sync::mpsc::unbounded_channel;
  
@@ -251,7 +251,7 @@ index c561052..2c1a888 100644
      #[test]
      fn footer_hint_row_is_separated_from_composer() {
          let (tx, _rx) = unbounded_channel::<AppEvent>();
-@@ -4563,6 +4746,45 @@ mod tests {
+@@ -4566,6 +4749,45 @@ mod tests {
          );
      }
  
