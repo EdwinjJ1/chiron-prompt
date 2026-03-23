@@ -1,8 +1,8 @@
 diff --git a/codex-rs/tui/src/bottom_pane/chat_composer.rs b/codex-rs/tui/src/bottom_pane/chat_composer.rs
-index f314c5e..fac7ed9 100644
+index c561052..dd14640 100644
 --- a/codex-rs/tui/src/bottom_pane/chat_composer.rs
 +++ b/codex-rs/tui/src/bottom_pane/chat_composer.rs
-@@ -224,6 +224,7 @@ use std::collections::HashSet;
+@@ -222,6 +222,7 @@ use std::collections::HashSet;
  use std::collections::VecDeque;
  use std::ops::Range;
  use std::path::PathBuf;
@@ -10,17 +10,17 @@ index f314c5e..fac7ed9 100644
  use std::sync::Arc;
  #[cfg(not(target_os = "linux"))]
  use std::sync::Mutex;
-@@ -238,6 +239,9 @@ use tokio::runtime::Handle;
+@@ -236,6 +237,9 @@ use tokio::runtime::Handle;
  /// If the pasted content exceeds this number of characters, replace it with a
  /// placeholder in the UI.
  const LARGE_PASTE_CHAR_THRESHOLD: usize = 1000;
-+const CHIRON_DOUBLE_CTRL_E_TIMEOUT: Duration = Duration::from_millis(800);
++const CHIRON_DOUBLE_CTRL_E_TIMEOUT: Duration = Duration::from_millis(500);
 +const CHIRON_ENHANCER_ENV: &str = "CHIRON_ENHANCER_PATH";
 +const CHIRON_DEFAULT_ENHANCE_BACKEND: &str = "gemini";
  
  fn user_input_too_large_message(actual_chars: usize) -> String {
      format!(
-@@ -370,6 +374,7 @@ pub(crate) struct ChatComposer {
+@@ -368,6 +372,7 @@ pub(crate) struct ChatComposer {
      attached_images: Vec<AttachedImage>,
      placeholder_text: String,
      voice_state: VoiceState,
@@ -28,7 +28,7 @@ index f314c5e..fac7ed9 100644
      // Spinner control flags keyed by placeholder id; set to true to stop.
      spinner_stop_flags: HashMap<String, Arc<AtomicBool>>,
      is_task_running: bool,
-@@ -499,6 +504,7 @@ impl ChatComposer {
+@@ -495,6 +500,7 @@ impl ChatComposer {
              attached_images: Vec::new(),
              placeholder_text,
              voice_state: VoiceState::new(enhanced_keys_supported),
@@ -36,7 +36,7 @@ index f314c5e..fac7ed9 100644
              spinner_stop_flags: HashMap::new(),
              is_task_running: false,
              input_enabled: true,
-@@ -964,7 +970,6 @@ impl ChatComposer {
+@@ -959,7 +965,6 @@ impl ChatComposer {
          urls
      }
  
@@ -44,7 +44,7 @@ index f314c5e..fac7ed9 100644
      pub(crate) fn show_footer_flash(&mut self, line: Line<'static>, duration: Duration) {
          let expires_at = Instant::now()
              .checked_add(duration)
-@@ -978,6 +983,144 @@ impl ChatComposer {
+@@ -973,6 +978,156 @@ impl ChatComposer {
              .is_some_and(|flash| Instant::now() < flash.expires_at)
      }
  
@@ -98,7 +98,7 @@ index f314c5e..fac7ed9 100644
 +        let enhancer_path = self.resolve_chiron_enhancer_path()?;
 +        let backend = std::env::var("CHIRON_ENHANCE_BACKEND")
 +            .unwrap_or_else(|_| CHIRON_DEFAULT_ENHANCE_BACKEND.to_string());
-+        
++
 +        let output = Command::new(&enhancer_path)
 +            .arg(raw_input)
 +            .env("CHIRON_ENHANCE_BACKEND", backend)
@@ -125,7 +125,7 @@ index f314c5e..fac7ed9 100644
 +        Ok(enhanced)
 +    }
 +
-+    fn enhance_current_draft_in_place(&mut self) -> Result<(), String> {
++    fn current_plain_text_draft(&mut self) -> Result<String, String> {
 +        if let Some(pasted) = self.paste_burst.flush_before_modified_input() {
 +            self.handle_paste(pasted);
 +        }
@@ -142,6 +142,10 @@ index f314c5e..fac7ed9 100644
 +            return Err("nothing to enhance".to_string());
 +        }
 +
++        Ok(raw_input)
++    }
++
++    fn enhance_current_draft_in_place(&mut self, raw_input: &str) -> Result<(), String> {
 +        let enhanced = self.run_chiron_enhancer(raw_input.trim())?;
 +        self.set_text_content(enhanced, Vec::new(), Vec::new());
 +        self.move_cursor_to_end();
@@ -150,9 +154,6 @@ index f314c5e..fac7ed9 100644
 +
 +    fn handle_ctrl_e_shortcut(&mut self, key_event: &KeyEvent) -> Option<(InputResult, bool)> {
 +        if !Self::is_ctrl_e_shortcut(key_event) {
-+            // Do not clear the state here. When advanced keyboard protocols are used (like kitty),
-+            // releasing the E key but holding Ctrl, or interacting with modifiers, can generate
-+            // intermediate events that break the rapid double-press. We let the timeout handle expiration.
 +            return None;
 +        }
 +
@@ -163,14 +164,25 @@ index f314c5e..fac7ed9 100644
 +
 +        if is_second_press {
 +            self.clear_ctrl_e_shortcut_state();
-+            // Show inline indication before blocking to exec
-+            self.set_text_content("🏹 Chiron enhancing...".to_string(), Vec::new(), Vec::new());
-+            
-+            // Allow ratatui to draw this draft momentarily (flush UI events)
-+            let _ = std::io::Write::flush(&mut std::io::stdout());
++            let raw_input = match self.current_plain_text_draft() {
++                Ok(raw_input) => raw_input,
++                Err(err) => {
++                    self.show_footer_flash(
++                        Line::from(format!("Chiron enhance failed: {err}")),
++                        Duration::from_secs(4),
++                    );
++                    return Some((InputResult::None, true));
++                }
++            };
 +
-+            match self.enhance_current_draft_in_place() {
-+                Ok(()) => Some((InputResult::None, true)),
++            match self.enhance_current_draft_in_place(&raw_input) {
++                Ok(()) => {
++                    self.show_footer_flash(
++                        Line::from("Chiron enhanced draft in place"),
++                        Duration::from_secs(2),
++                    );
++                    Some((InputResult::None, true))
++                }
 +                Err(err) => {
 +                    self.show_footer_flash(
 +                        Line::from(format!("Chiron enhance failed: {err}")),
@@ -189,7 +201,7 @@ index f314c5e..fac7ed9 100644
      /// Replace the entire composer content with `text` and reset cursor.
      ///
      /// This is the "fresh draft" path: it clears pending paste payloads and
-@@ -1330,6 +1473,11 @@ impl ChatComposer {
+@@ -1325,6 +1480,11 @@ impl ChatComposer {
              return result;
          }
  
@@ -201,7 +213,7 @@ index f314c5e..fac7ed9 100644
          let result = match &mut self.active_popup {
              ActivePopup::Command(_) => self.handle_key_event_with_slash_popup(key_event),
              ActivePopup::File(_) => self.handle_key_event_with_file_popup(key_event),
-@@ -4497,7 +4645,11 @@ mod tests {
+@@ -4494,7 +4654,11 @@ mod tests {
      use image::ImageBuffer;
      use image::Rgba;
      use pretty_assertions::assert_eq;
@@ -213,7 +225,7 @@ index f314c5e..fac7ed9 100644
      use tempfile::tempdir;
  
      use crate::app_event::AppEvent;
-@@ -4512,6 +4664,37 @@ mod tests {
+@@ -4509,6 +4673,109 @@ mod tests {
      use crate::bottom_pane::textarea::TextArea;
      use tokio::sync::mpsc::unbounded_channel;
  
@@ -248,13 +260,19 @@ index f314c5e..fac7ed9 100644
 +        (dir, path)
 +    }
 +
-     #[test]
-     fn footer_hint_row_is_separated_from_composer() {
-         let (tx, _rx) = unbounded_channel::<AppEvent>();
-@@ -4566,6 +4749,45 @@ mod tests {
-         );
-     }
- 
++    #[cfg(unix)]
++    fn create_echo_arg_chiron_enhancer() -> (tempfile::TempDir, PathBuf) {
++        let dir = tempdir().expect("create temp dir");
++        let path = dir.path().join("mock-chiron-enhancer");
++        fs::write(&path, "#!/bin/sh\nprintf '%s' \"$1\"\n").expect("write mock enhancer");
++        let mut perms = fs::metadata(&path)
++            .expect("stat mock enhancer")
++            .permissions();
++        perms.set_mode(0o755);
++        fs::set_permissions(&path, perms).expect("chmod mock enhancer");
++        (dir, path)
++    }
++
 +    #[test]
 +    fn single_ctrl_e_moves_cursor_to_end_of_line() {
 +        let mut composer = new_test_composer();
@@ -274,7 +292,6 @@ index f314c5e..fac7ed9 100644
 +    fn double_ctrl_e_replaces_draft_with_enhanced_text() {
 +        let _guard = CHIRON_ENV_MUTEX.lock().expect("lock CHIRON env");
 +        let (_dir, script) = create_mock_chiron_enhancer("enhanced prompt");
-+        // SAFETY: tests serialize access to the CHIRON env vars via CHIRON_ENV_MUTEX.
 +        unsafe { std::env::set_var(CHIRON_ENHANCER_ENV, &script) };
 +
 +        let mut composer = new_test_composer();
@@ -290,10 +307,31 @@ index f314c5e..fac7ed9 100644
 +        assert_eq!(composer.current_text_with_pending(), "enhanced prompt");
 +        assert_eq!(composer.textarea.cursor(), "enhanced prompt".len());
 +
-+        // SAFETY: tests serialize access to the CHIRON env vars via CHIRON_ENV_MUTEX.
++        unsafe { std::env::remove_var(CHIRON_ENHANCER_ENV) };
++    }
++
++    #[test]
++    #[cfg(unix)]
++    fn double_ctrl_e_passes_original_draft_to_enhancer() {
++        let _guard = CHIRON_ENV_MUTEX.lock().expect("lock CHIRON env");
++        let (_dir, script) = create_echo_arg_chiron_enhancer();
++        unsafe { std::env::set_var(CHIRON_ENHANCER_ENV, &script) };
++
++        let mut composer = new_test_composer();
++        composer.set_text_content("rough request".to_string(), Vec::new(), Vec::new());
++        composer.move_cursor_to_end();
++
++        let _ = composer.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL));
++        let (result, redraw) =
++            composer.handle_key_event(KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL));
++
++        assert_eq!(result, InputResult::None);
++        assert!(redraw);
++        assert_eq!(composer.current_text_with_pending(), "rough request");
++
 +        unsafe { std::env::remove_var(CHIRON_ENHANCER_ENV) };
 +    }
 +
      #[test]
-     fn footer_flash_overrides_footer_hint_override() {
+     fn footer_hint_row_is_separated_from_composer() {
          let (tx, _rx) = unbounded_channel::<AppEvent>();

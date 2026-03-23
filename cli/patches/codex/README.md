@@ -12,7 +12,7 @@ Current scope:
 
 - works for plain text drafts
 - refuses to enhance drafts that currently contain mentions or image attachments, to avoid silently dropping structured input
-- defaults the enhancer backend to `local`, so Codex can use Chiron without requiring Gemini
+- defaults the enhancer backend to `gemini`, which matches the main Chiron CLI behavior
 
 ## Install
 
@@ -48,4 +48,4 @@ git -C /path/to/openai-codex apply /path/to/chiron/cli/patches/codex/double-ctrl
 - The patch was developed against `openai/codex` commit `5ceff6588ef67aaac34f9461411b90f65e42b4f9`.
 - If the patch fails to apply, rebase your local Codex clone or port the same logic manually into `codex-rs/tui/src/bottom_pane/chat_composer.rs`.
 - The in-place enhancer runs the executable at `CHIRON_ENHANCER_PATH` first, then falls back to `~/.chiron/cli/bin/chiron-enhance.mjs`.
-- The bundled Chiron runtime sets `CHIRON_ENHANCE_BACKEND=local` for Codex-triggered enhancement.
+- The bundled Chiron runtime defaults `CHIRON_ENHANCE_BACKEND` to `gemini` for Codex-triggered enhancement.

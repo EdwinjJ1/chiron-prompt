@@ -296,13 +296,17 @@ node cli/bin/install-gemini-overlay.mjs
 如果你使用开源的 [OpenAI Codex](https://github.com/openai/codex) 终端客户端，Chiron 同样支持双击 `Ctrl+E` 的无缝增强体验。
 
 ```bash
-git clone https://github.com/openai/codex.git /tmp/openai-codex
-node cli/bin/install-codex-source-enhance.mjs --codex-root /tmp/openai-codex
-cd /tmp/openai-codex/codex-rs
-cargo build --bin codex
-export CHIRON_ENHANCER_PATH=~/.chiron/cli/bin/chiron-enhance.mjs
-cargo run --bin codex
+node cli/bin/install-codex-overlay.mjs
 ```
+
+安装器会自动：
+1. 下载最新 codex 源码
+2. 打上双击 `Ctrl+E` 的补丁
+3. 编译出 native binary 到 `~/.chiron/bin/codex`
+4. 创建 `~/.local/bin/codex` 的包装脚本，支持按需注入
+5. 自动清理源码，不会留下临时文件
+
+完成后，只要 `~/.local/bin` 在你的 `PATH` 里，直接运行 `codex` 即可体验。
 
 > 大多数用户从 **方式 A** 或 **方式 D** 开始就够了。
 
