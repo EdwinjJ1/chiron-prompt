@@ -1,29 +1,20 @@
 {
     "name": "chiron-prompt-cli",
     "version": "2.0.0",
-    "description": "Chiron Prompt Enhancer — MCP Server & CLI for intelligent prompt enhancement with codebase context",
+    "description": "Chiron — Ctrl+E prompt enhancer for Gemini CLI and Codex",
     "type": "module",
     "bin": {
-        "chiron": "./bin/chiron.mjs",
         "chiron-enhance": "./bin/chiron-enhance.mjs"
     },
-    "main": "src/server.mjs",
-    "scripts": {
-        "start": "node src/server.mjs",
-        "serve": "node src/server.mjs"
-    },
-    "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.12.1"
-    },
+    "dependencies": {},
     "engines": {
         "node": ">=18.0.0"
     },
     "keywords": [
         "prompt-engineering",
-        "mcp",
-        "claude-code",
         "cli",
-        "context-engine"
+        "gemini-cli",
+        "codex"
     ],
     "license": "MIT"
 }

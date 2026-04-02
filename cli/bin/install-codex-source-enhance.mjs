@@ -166,7 +166,8 @@ async function main() {
   console.log('2. cargo test -p codex-tui ctrl_e_');
   console.log('3. cargo build -p codex-tui');
   console.log('4. export CHIRON_ENHANCER_PATH=~/.chiron/cli/bin/chiron-enhance.mjs');
-  console.log('5. cargo run --bin codex');
+  console.log('5. export CHIRON_ENHANCE_BACKEND=${CHIRON_ENHANCE_BACKEND:-gemini}');
+  console.log('6. cargo run --bin codex');
 }
 
 main().catch((error) => {
