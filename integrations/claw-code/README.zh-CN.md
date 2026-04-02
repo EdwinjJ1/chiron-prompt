@@ -1,64 +1,76 @@
-# Chiron x Claw Code — 双击 Ctrl+E 提示词增强
+# Chiron x Claw Code — Ctrl+E 提示词增强
 
-将 Chiron 的提示词增强集成到 [claw-code](https://github.com/instructkr/claw-code)（开源 Claude Code 替代品）中，通过 REPL 中的**双击 Ctrl+E** 触发。
+将 Chiron 的提示词增强集成到 [claw-code](https://github.com/instructkr/claw-code)（开源 Claude Code）中，在 REPL 里按 **Ctrl+E** 即可触发。
 
 ## 工作原理
 
 ```
 用户在 claw REPL 中输入提示词
          │
-         ├── Enter ────────────────► 直接提交
+         ├── Enter ───────► 直接提交
          │
-         └── Ctrl+E Ctrl+E ───────► 通过 chiron-enhance 增强
-                    │                   （仓库上下文 + 策略检测）
-                    │
-                    ▼
-            增强后的提示词提交给 Claude
+         └── Ctrl+E ──────► 通过 chiron-enhance 增强
+                │               （仓库上下文 + 策略检测）
+                ▼
+        增强后的提示词回填到输入框
+        用户可继续编辑 → Enter 提交
 ```
 
-1. **第一次 Ctrl+E**：清空当前输入（与 Ctrl+C 行为一致）
-2. **第二次 Ctrl+E**（500ms 内）：捕获输入文本，通过 `chiron-enhance --inline` 管道增强，然后提交增强版本
+**单击 Ctrl+E** — 增强后的文本会回填到输入框，用户可以查看和编辑后再提交。
 
-## 安装
+## 一键安装
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/EdwinjJ1/chiron-prompt/main/integrations/claw-code/install.sh | bash
+```
+
+安装器会：
+1. Clone claw-code（或使用已有的 clone，通过 `--claw-dir` 指定）
+2. Apply Ctrl+E 增强补丁
+3. Cargo build
+4. 安装 `claw-chiron` 启动器到 `~/.local/bin/`
 
 ### 前置条件
 
-- 已克隆并构建 [claw-code](https://github.com/instructkr/claw-code)
-- 已安装 [Chiron CLI](../../cli/)，且 `chiron-enhance` 在 PATH 中
-
-### 步骤 1：安装 chiron-enhance
+- [Rust](https://rustup.rs/)（`cargo` 在 PATH 中）
+- [chiron-enhance](../../cli/)（`npm link` 安装）
 
 ```bash
-cd chiron-prompt/cli
-npm link
-# 验证：
-chiron-enhance --help
+# 先安装 chiron-enhance
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
+cd ~/.chiron/cli && npm link
 ```
 
-### 步骤 2：应用补丁
+### 使用已有的 claw-code clone
 
 ```bash
-cd /path/to/claw-code
-git apply /path/to/chiron-prompt/integrations/claw-code/ctrl-e-enhance.patch
+./install.sh --claw-dir /path/to/claw-code
 ```
 
-### 步骤 3：构建
+### 上游更新后重建
 
 ```bash
-cd rust
-cargo build --package rusty-claude-cli --release
+claw-chiron-update
+# 或：
+./install.sh --claw-dir /path/to/claw-code --update
 ```
 
-### 步骤 4：运行
+## 使用
 
 ```bash
-./target/release/claw
-# 输入提示词后，快速按两次 Ctrl+E 即可增强
+claw-chiron
 ```
+
+REPL 内：
+
+| 按键 | 功能 |
+|------|------|
+| `Enter` | 提交提示词 |
+| `Ctrl+E` | 增强提示词，回填到输入框（可继续编辑） |
+| `Ctrl+C` | 退出（空输入时） |
+| `Ctrl+J` / `Shift+Enter` | 插入换行 |
 
 ## 配置
-
-通过环境变量设置增强后端：
 
 ```bash
 # 使用 Gemini CLI 重写（默认，推荐）
@@ -68,14 +80,17 @@ export CHIRON_ENHANCE_BACKEND=gemini
 export CHIRON_ENHANCE_BACKEND=local
 ```
 
-## 快捷键参考
+## 架构
 
-| 按键 | 功能 |
+补丁修改了三个文件：
+
+| 文件 | 改动 |
 |------|------|
-| `Enter` | 提交提示词 |
-| `Ctrl+C` | 清空输入 / 空输入时退出 |
-| `Ctrl+J` / `Shift+Enter` | 插入换行 |
-| `Ctrl+E` `Ctrl+E` | 用 Chiron 增强提示词 |
+| `input.rs` | 绑定 Ctrl+E → `Cmd::Interrupt`，捕获输入为 `ReadOutcome::Enhance` |
+| `main.rs` | 处理 `Enhance` → 调用 `chiron-enhance --inline` → 用 `readline_with_initial` 回填输入框 |
+| `config.rs` | 跳过非字符串 hook 条目（兼容新版 Claude Code settings 格式） |
+
+集成是**松耦合**的 — claw-code 只是把 `chiron-enhance` 当作外部二进制调用。如果未安装，Ctrl+E 会 fallback 提交原文。
 
 ## 许可证
 

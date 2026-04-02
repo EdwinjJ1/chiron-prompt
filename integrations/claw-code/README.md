@@ -1,108 +1,102 @@
-# Chiron x Claw Code — Double Ctrl+E Prompt Enhancement
+# Chiron x Claw Code — Ctrl+E Prompt Enhancement
 
-Integrate Chiron's prompt enhancement into [claw-code](https://github.com/instructkr/claw-code) (an open-source Claude Code alternative) via a **double Ctrl+E** keybinding in the REPL.
+Add prompt enhancement to [claw-code](https://github.com/instructkr/claw-code) (open-source Claude Code) via **Ctrl+E** in the REPL.
 
 ## How It Works
 
 ```
 User types a prompt in claw REPL
          │
-         ├── Enter ────────────────► Submit as-is
+         ├── Enter ───────► Submit as-is
          │
-         └── Ctrl+E Ctrl+E ───────► Enhance via chiron-enhance
-                    │                   (repo context + strategy)
-                    │
-                    ▼
-            Enhanced prompt submitted to Claude
+         └── Ctrl+E ──────► Enhance via chiron-enhance
+                │               (repo context + strategy)
+                ▼
+        Enhanced prompt pre-filled in input box
+        User can keep editing → Enter to submit
 ```
 
-1. **First Ctrl+E**: Clears the current input (same as Ctrl+C)
-2. **Second Ctrl+E** (within 500ms): Captures the input text, pipes it through `chiron-enhance --inline`, and submits the enhanced version
+**Single Ctrl+E** — no double-press needed. The enhanced text replaces your input so you can review and edit before submitting.
 
-## Install
+## One-Line Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/EdwinjJ1/chiron-prompt/main/integrations/claw-code/install.sh | bash
+```
+
+This will:
+1. Clone claw-code (or use your existing clone with `--claw-dir`)
+2. Apply the Ctrl+E enhancement patch
+3. Build with `cargo`
+4. Install `claw-chiron` launcher to `~/.local/bin/`
 
 ### Prerequisites
 
-- [claw-code](https://github.com/instructkr/claw-code) cloned and built
-- [Chiron CLI](../../cli/) installed and `chiron-enhance` in PATH
-
-### Step 1: Install chiron-enhance
+- [Rust](https://rustup.rs/) (`cargo` in PATH)
+- [chiron-enhance](../../cli/) (`npm link` from `chiron-prompt/cli/`)
 
 ```bash
-cd chiron-prompt/cli
-npm link
-# Verify:
-chiron-enhance --help
+# Install chiron-enhance first
+git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron
+cd ~/.chiron/cli && npm link
 ```
 
-### Step 2: Apply the patch
+### Using an Existing Clone
+
+If you already have claw-code cloned:
 
 ```bash
-cd /path/to/claw-code
-git apply /path/to/chiron-prompt/integrations/claw-code/ctrl-e-enhance.patch
+./install.sh --claw-dir /path/to/claw-code
 ```
 
-### Step 3: Build
+### Update After Upstream Changes
 
 ```bash
-cd rust
-cargo build --package rusty-claude-cli --release
+claw-chiron-update
 ```
 
-### Step 4: Run
+Or re-run with `--update`:
 
 ```bash
-./target/release/claw
-# Type a prompt, then press Ctrl+E twice quickly to enhance it
+./install.sh --claw-dir /path/to/claw-code --update
 ```
+
+## Usage
+
+```bash
+claw-chiron
+```
+
+Inside the REPL:
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Submit prompt |
+| `Ctrl+E` | Enhance prompt, pre-fill result for editing |
+| `Ctrl+C` | Exit (on empty input) |
+| `Ctrl+J` / `Shift+Enter` | Insert newline |
 
 ## Configuration
-
-Set the enhancement backend via environment variable:
 
 ```bash
 # Use Gemini CLI for rewriting (default, recommended)
 export CHIRON_ENHANCE_BACKEND=gemini
 
-# Use local strategy detection only (no LLM call)
+# Use local strategy only (no LLM call)
 export CHIRON_ENHANCE_BACKEND=local
 ```
 
 ## Architecture
 
-The patch modifies two files in `rusty-claude-cli`:
+The patch modifies three files:
 
 | File | Change |
 |------|--------|
-| `src/input.rs` | Bind Ctrl+E to `Cmd::Interrupt`, detect double-press via timing state machine |
-| `src/main.rs` | Handle `ReadOutcome::Enhance`, call external `chiron-enhance` binary |
+| `input.rs` | Bind Ctrl+E → `Cmd::Interrupt`, capture input as `ReadOutcome::Enhance` |
+| `main.rs` | Handle `Enhance` → call `chiron-enhance --inline` → re-open input with `readline_with_initial` |
+| `config.rs` | Skip non-string hook entries (compatibility with new Claude Code settings format) |
 
-### Double-Press Detection
-
-```
-Ctrl+E (first) ──► Cancel current input, record timestamp
-                         │
-    Ctrl+E within 500ms ─┤
-                         ▼
-              ReadOutcome::Enhance(text)
-                         │
-                         ▼
-              chiron-enhance --inline
-                         │
-                         ▼
-              Enhanced prompt → Submit
-```
-
-The integration is **loosely coupled** — claw-code only calls `chiron-enhance` as an external binary. If it's not in PATH, the original prompt is submitted unchanged.
-
-## Keybinding Reference
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Submit prompt |
-| `Ctrl+C` | Clear input / Exit on empty |
-| `Ctrl+J` / `Shift+Enter` | Insert newline |
-| `Ctrl+E` `Ctrl+E` | Enhance prompt with Chiron |
+The integration is **loosely coupled** — claw-code calls `chiron-enhance` as an external binary. If it's not installed, Ctrl+E falls back to the original prompt.
 
 ## License
 
