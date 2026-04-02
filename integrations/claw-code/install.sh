@@ -1,198 +1,176 @@
 #!/usr/bin/env bash
-# claw-chiron: Install Chiron prompt enhancement into claw-code
+# claw-chiron: Add Chiron Ctrl+E prompt enhancement to claw-code
 #
 # Usage:
+#   # Fresh install:
 #   curl -fsSL https://raw.githubusercontent.com/EdwinjJ1/chiron-prompt/main/integrations/claw-code/install.sh | bash
-#   # or:
-#   ./install.sh [--install-dir ~/claw-chiron]
+#
+#   # Use existing claw-code clone:
+#   ./install.sh --claw-dir /path/to/claw-code
+#
+#   # Update (re-run after upstream changes):
+#   ./install.sh --claw-dir /path/to/claw-code --update
 #
 set -euo pipefail
 
-INSTALL_DIR="${CLAW_CHIRON_DIR:-$HOME/.claw-chiron}"
+CLAW_DIR=""
+INSTALL_DIR="${HOME}/.claw-chiron"
 UPSTREAM_REPO="https://github.com/instructkr/claw-code.git"
-BRANCH="main"
 PATCH_URL="https://raw.githubusercontent.com/EdwinjJ1/chiron-prompt/main/integrations/claw-code/ctrl-e-enhance.patch"
+DO_UPDATE=false
 
-# Parse args
 for arg in "$@"; do
     case "$arg" in
+        --claw-dir=*)   CLAW_DIR="${arg#*=}" ;;
+        --claw-dir)     shift; CLAW_DIR="$1" ;;
+        --update)       DO_UPDATE=true ;;
         --install-dir=*) INSTALL_DIR="${arg#*=}" ;;
-        --install-dir)   shift; INSTALL_DIR="$1" ;;
-        *) echo "Unknown argument: $arg"; exit 1 ;;
+        *) echo "Usage: $0 [--claw-dir /path/to/claw-code] [--update]"; exit 1 ;;
     esac
 done
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "${CYAN}[claw-chiron]${NC} $*"; }
 ok()    { echo -e "${GREEN}[claw-chiron]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[claw-chiron]${NC} $*"; }
-error() { echo -e "${RED}[claw-chiron]${NC} $*" >&2; exit 1; }
+die()   { echo -e "${RED}[claw-chiron]${NC} $*" >&2; exit 1; }
 
-# ── Preflight checks ─────────────────────────────────────
+# ── Preflight ──────────────────────────────────────────────
 info "Checking prerequisites..."
+command -v git >/dev/null   || die "git not found"
+command -v cargo >/dev/null || die "cargo not found (install from https://rustup.rs)"
+command -v curl >/dev/null  || die "curl not found"
 
-command -v git >/dev/null 2>&1    || error "git is required (https://git-scm.com/)"
-command -v cargo >/dev/null 2>&1  || error "cargo is required (https://rustup.rs/)"
-command -v curl >/dev/null 2>&1   || error "curl is required"
-
-CHIRON_ENHANCE=$(command -v chiron-enhance 2>/dev/null || true)
-if [ -z "$CHIRON_ENHANCE" ]; then
-    warn "chiron-enhance not found in PATH"
-    warn "Install it first:  git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron && cd ~/.chiron/cli && npm link"
-    warn "Continuing anyway — Ctrl+E will fall back to original prompt until chiron-enhance is installed."
-fi
-
-# ── Clone or update claw-code ─────────────────────────────
-if [ -d "$INSTALL_DIR/claw-code" ]; then
-    info "Updating existing claw-code clone..."
-    cd "$INSTALL_DIR/claw-code"
-    git fetch origin "$BRANCH" || error "Failed to fetch upstream"
-    git reset --hard "origin/$BRANCH" || error "Failed to reset to upstream"
+# ── Locate or clone claw-code ──────────────────────────────
+if [ -n "$CLAW_DIR" ]; then
+    # User specified an existing clone
+    [ -d "$CLAW_DIR/.git" ] || die "$CLAW_DIR is not a git repo"
+    CLAW_DIR="$(cd "$CLAW_DIR" && pwd)"
+    info "Using existing claw-code at: $CLAW_DIR"
+elif [ -d "$INSTALL_DIR/claw-code/.git" ]; then
+    CLAW_DIR="$INSTALL_DIR/claw-code"
+    info "Found previous clone at: $CLAW_DIR"
 else
     info "Cloning claw-code..."
     mkdir -p "$INSTALL_DIR"
-    git clone --depth 1 --branch "$BRANCH" "$UPSTREAM_REPO" "$INSTALL_DIR/claw-code" \
-        || error "Failed to clone claw-code"
-    cd "$INSTALL_DIR/claw-code"
+    git clone --depth 1 "$UPSTREAM_REPO" "$INSTALL_DIR/claw-code" || die "Clone failed"
+    CLAW_DIR="$INSTALL_DIR/claw-code"
 fi
 
-# ── Apply patch ───────────────────────────────────────────
-info "Applying Chiron Ctrl+E enhancement patch..."
+cd "$CLAW_DIR"
+
+# ── Update if requested ────────────────────────────────────
+if $DO_UPDATE || [ -n "$CLAW_DIR" ]; then
+    info "Pulling latest upstream..."
+    git fetch origin main 2>/dev/null || true
+    git checkout main 2>/dev/null || true
+    git reset --hard origin/main 2>/dev/null || warn "Could not reset to origin/main (may be local changes)"
+fi
+
+# ── Download and apply patch ────────────────────────────────
+info "Downloading patch..."
 PATCH_FILE="$INSTALL_DIR/ctrl-e-enhance.patch"
-curl -fsSL "$PATCH_URL" -o "$PATCH_FILE" || error "Failed to download patch"
+curl -fsSL "$PATCH_URL" -o "$PATCH_FILE" || die "Failed to download patch"
 
-# Try to apply. If it fails (upstream changed), try with offset.
-if ! git apply --check "$PATCH_FILE" 2>/dev/null; then
-    # Try with more fuzz
-    if git apply --check --3way "$PATCH_FILE" 2>/dev/null; then
-        git apply --3way "$PATCH_FILE" || error "Patch failed with 3way merge"
-    else
-        error "Patch does not apply cleanly. Upstream may have changed significantly.
-        Check https://github.com/EdwinjJ1/chiron-prompt/issues for updates."
-    fi
+info "Applying Ctrl+E enhancement patch..."
+if git apply --check "$PATCH_FILE" 2>/dev/null; then
+    git apply "$PATCH_FILE" || die "Patch apply failed"
+elif git apply --check --3way "$PATCH_FILE" 2>/dev/null; then
+    git apply --3way "$PATCH_FILE" || die "3way merge failed"
 else
-    git apply "$PATCH_FILE" || error "Failed to apply patch"
+    die "Patch conflicts with upstream. Check for updates at:
+    https://github.com/EdwinjJ1/chiron-prompt/issues"
 fi
+ok "Patch applied."
 
-ok "Patch applied successfully."
-
-# ── Also patch hooks compatibility (new Claude Code settings format) ──
-info "Patching hooks compatibility for new settings format..."
-HOOKS_FILE="rust/crates/runtime/src/config.rs"
-if [ -f "$HOOKS_FILE" ]; then
-    # Replace the strict string-array parser with one that skips objects
-    sed -i.bak 's/                .iter()\n                .map(|item| {\n                    item.as_str.*//; ' "$HOOKS_FILE" 2>/dev/null || true
-
-    # Use a more reliable approach: patch the optional_string_array function
-    if grep -q "must contain only strings" "$HOOKS_FILE"; then
-        # Apply the hooks compatibility inline
-        python3 -c "
-import re, sys
-with open('$HOOKS_FILE', 'r') as f:
-    content = f.read()
-
-old = '''            array
+# ── Patch hooks compatibility (new settings format) ─────────
+CONFIG_FILE="rust/crates/runtime/src/config.rs"
+if [ -f "$CONFIG_FILE" ] && grep -q "must contain only strings" "$CONFIG_FILE"; then
+    info "Patching hooks compatibility for new Claude Code settings format..."
+    # Replace strict string-only parser with one that silently skips objects
+    if command -v python3 >/dev/null; then
+        python3 - "$CONFIG_FILE" << 'PYEOF'
+import sys
+path = sys.argv[1]
+with open(path) as f:
+    c = f.read()
+old = """            array
                 .iter()
                 .map(|item| {
                     item.as_str().map(ToOwned::to_owned).ok_or_else(|| {
                         ConfigError::Parse(format!(
-                            \"{context}: field {key} must contain only strings\"
+                            "{context}: field {key} must contain only strings"
                         ))
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()
-                .map(Some)'''
-
-new = '''            // Skip non-string entries (e.g. hook objects from newer settings format).
+                .map(Some)"""
+new = """            // Skip non-string entries (e.g. hook objects from newer settings).
             let strings: Vec<String> = array
                 .iter()
                 .filter_map(|item| item.as_str().map(ToOwned::to_owned))
                 .collect();
-            Ok(Some(strings))'''
-
-if old in content:
-    content = content.replace(old, new)
-    with open('$HOOKS_FILE', 'w') as f:
-        f.write(content)
-    print('patched')
+            Ok(Some(strings))"""
+if old in c:
+    c = c.replace(old, new)
+    with open(path, 'w') as f:
+        f.write(c)
+    print("patched")
 else:
-    print('already_patched_or_changed')
-" 2>/dev/null || warn "Could not patch hooks compatibility. You may need to set CLAUDE_CONFIG_HOME."
+    print("already_patched")
+PYEOF
     fi
 fi
 
-# ── Build ─────────────────────────────────────────────────
-info "Building claw-code (this may take a few minutes)..."
+# ── Build ──────────────────────────────────────────────────
+info "Building claw-code (first build may take a few minutes)..."
 cd rust
-cargo build --package rusty-claude-cli --release 2>&1 | tail -3 \
-    || error "Build failed. Check Rust toolchain (rustup.rs)"
+cargo build --package rusty-claude-cli --release 2>&1 | tail -3 || die "Build failed"
+cd ..
 
-BINARY="$INSTALL_DIR/claw-code/rust/target/release/claw"
-[ -f "$BINARY" ] || error "Binary not found after build"
+BINARY="$CLAW_DIR/rust/target/release/claw"
+[ -f "$BINARY" ] || die "Binary not found after build"
+ok "Build complete: $BINARY"
 
-ok "Build successful: $BINARY"
+# ── Install wrapper ────────────────────────────────────────
+WRAPPER="$HOME/.local/bin/claw-chiron"
+mkdir -p "$(dirname "$WRAPPER")"
 
-# ── Install wrapper script ────────────────────────────────
-WRAPPER_BIN="$HOME/.local/bin/claw-chiron"
-mkdir -p "$(dirname "$WRAPPER_BIN")"
-
-cat > "$WRAPPER_BIN" << 'WRAPPER_EOF'
+cat > "$WRAPPER" << EOF
 #!/usr/bin/env bash
 # claw-chiron — claw-code with Chiron Ctrl+E prompt enhancement
 set -euo pipefail
+exec "$BINARY" "\$@"
+EOF
+chmod +x "$WRAPPER"
 
-CLAW_CHIRON_DIR="${CLAW_CHIRON_DIR:-$HOME/.claw-chiron}"
-CLAW_BIN="$CLAW_CHIRON_DIR/claw-code/rust/target/release/claw"
+# ── Install updater ────────────────────────────────────────
+UPDATER="$HOME/.local/bin/claw-chiron-update"
+mkdir -p "$(dirname "$UPDATER")"
 
-if [ ! -f "$CLAW_BIN" ]; then
-    echo "claw-chiron: binary not found. Run the installer again:"
-    echo "  curl -fsSL https://raw.githubusercontent.com/EdwinjJ1/chiron-prompt/main/integrations/claw-code/install.sh | bash"
-    exit 1
-fi
-
-# Forward all arguments to claw
-exec "$CLAW_BIN" "$@"
-WRAPPER_EOF
-
-chmod +x "$WRAPPER_BIN"
-
-# ── Install update script ─────────────────────────────────
-UPDATE_BIN="$HOME/.local/bin/claw-chiron-update"
-cat > "$UPDATE_BIN" << UPDATE_EOF
+cat > "$UPDATER" << EOF
 #!/usr/bin/env bash
-# claw-chiron-update — re-pull upstream and rebuild
+# claw-chiron-update — pull upstream and rebuild
 set -euo pipefail
-exec "$INSTALL_DIR/claw-code/../../../chiron-prompt/integrations/claw-code/install.sh" "\$@"
-UPDATE_EOF
-chmod +x "$UPDATE_BIN"
+exec "$0" --claw-dir "$CLAW_DIR" --update "\$@"
+EOF
+chmod +x "$UPDATER"
 
-# ── Done ──────────────────────────────────────────────────
+# ── Done ───────────────────────────────────────────────────
 echo ""
-ok "Installation complete!"
+ok "Done!"
 echo ""
-echo "  Binary:     $BINARY"
-echo "  Launcher:   $WRAPPER_BIN"
-echo "  Update:     $UPDATE_BIN"
+echo "  Binary:   $BINARY"
+echo "  Launcher: $WRAPPER"
+echo "  Updater:  $UPDATER"
 echo ""
-echo "Make sure ~/.local/bin is in your PATH."
-echo ""
-echo "Quick start:"
-echo ""
-if [ -n "$CHIRON_ENHANCE" ]; then
-    echo "  claw-chiron              # Start with prompt enhancement"
-else
-    echo "  # First install chiron-enhance:"
-    echo "  git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron"
-    echo "  cd ~/.chiron/cli && npm link"
-    echo "  claw-chiron              # Then start with prompt enhancement"
+if ! command -v chiron-enhance >/dev/null 2>&1; then
+    warn "chiron-enhance not in PATH. Install it first:"
+    echo ""
+    echo "    git clone https://github.com/EdwinjJ1/chiron-prompt.git ~/.chiron"
+    echo "    cd ~/.chiron/cli && npm link"
+    echo ""
 fi
-echo ""
-echo "Inside the REPL:"
-echo "  Ctrl+E    Enhance current prompt (requires chiron-enhance)"
-echo "  Enter     Submit"
-echo "  Ctrl+C    Exit"
+echo "Usage:"
+echo "  claw-chiron            Start REPL with Ctrl+E enhancement"
+echo "  claw-chiron-update     Re-pull upstream and rebuild"
