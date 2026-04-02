@@ -226,6 +226,7 @@ flowchart TD
 | 手动 patch | 自己 `git apply` .patch 文件 | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | 想在 Claude Code 里使用仓库感知增强 | [.claude/commands/e.md](.claude/commands/e.md) |
 | OpenAI Codex TUI | 给 Codex 开源克隆版添加双击 `Ctrl+E` 原地增强 | [cli/patches/codex/](cli/patches/codex/) |
+| Claw Code (Rust) | 给 [claw-code](https://github.com/instructkr/claw-code) 添加双击 `Ctrl+E` 原地增强 | [integrations/claw-code/](integrations/claw-code/) |
 | 仅 skill | 只想复用增强逻辑 | [SKILL.md](SKILL.md) |
 
 ## 仓库结构
@@ -238,6 +239,7 @@ flowchart TD
 ├── .gemini/
 ├── .claude/
 ├── cli/
+├── integrations/            # 第三方 CLI 集成（claw-code 等）
 ├── docs/
 ├── tests/
 └── prompt-history/
@@ -303,6 +305,22 @@ cargo run --bin codex
 ```
 
 > 大多数用户从 **方式 A** 或 **方式 D** 开始就够了。
+
+### 方式 G：Claw Code（Rust CLI）
+
+将 Chiron 提示词增强集成到 [claw-code](https://github.com/instructkr/claw-code)，一个 Rust 实现的开源 Claude Code 替代品。
+
+```bash
+# 在你的 claw-code 克隆目录里应用补丁
+cd /path/to/claw-code
+git apply ~/.chiron/integrations/claw-code/ctrl-e-enhance.patch
+cd rust && cargo build --package rusty-claude-cli --release
+
+# 运行，支持双击 Ctrl+E 增强
+./target/release/claw
+```
+
+完整说明：[integrations/claw-code/README.zh-CN.md](integrations/claw-code/README.zh-CN.md)
 
 ## 相关文档
 

@@ -243,6 +243,7 @@ The implementation behind this flow lives in:
 | Manual patch | `git apply` the `.patch` file yourself | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | Repo-aware slash command in Claude Code | [.claude/commands/e.md](.claude/commands/e.md) |
 | OpenAI Codex TUI | Double `Ctrl+E` enhance-in-place for Codex open-source clone | [cli/patches/codex/](cli/patches/codex/) |
+| Claw Code (Rust) | Double `Ctrl+E` enhance-in-place for [claw-code](https://github.com/instructkr/claw-code) | [integrations/claw-code/](integrations/claw-code/) |
 | Skill only | Reusable prompt-enhancement behavior without CLI wiring | [SKILL.md](SKILL.md) |
 
 ## Repository Layout
@@ -255,6 +256,7 @@ The implementation behind this flow lives in:
 ├── .gemini/                 # Gemini CLI command integration
 ├── .claude/                 # Claude Code command + runtime skill assets
 ├── cli/                     # Enhancer scripts, MCP server, patches, TUI experiment
+├── integrations/            # Third-party CLI integrations (claw-code, etc.)
 ├── docs/                    # Examples, testing notes, references
 ├── tests/                   # Pytest coverage for prompt logging helpers
 └── prompt-history/          # Optional prompt library/logging
@@ -320,6 +322,22 @@ cargo run --bin codex
 ```
 
 > Most users should start with **Option A** or **Option D**.
+
+### Option G: Claw Code (Rust CLI)
+
+Integrate Chiron's prompt enhancement into [claw-code](https://github.com/instructkr/claw-code), an open-source Claude Code alternative built in Rust.
+
+```bash
+# Apply the patch to your claw-code clone
+cd /path/to/claw-code
+git apply ~/.chiron/integrations/claw-code/ctrl-e-enhance.patch
+cd rust && cargo build --package rusty-claude-cli --release
+
+# Run with double Ctrl+E enhancement
+./target/release/claw
+```
+
+Full details: [integrations/claw-code/README.md](integrations/claw-code/README.md)
 
 ## Related Docs
 

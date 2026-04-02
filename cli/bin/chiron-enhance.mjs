@@ -291,11 +291,33 @@ async function enhancePrompt({
   }
 }
 
+function readStdin() {
+  return new Promise((resolve, reject) => {
+    if (process.stdin.isTTY) {
+      resolve('');
+      return;
+    }
+    const chunks = [];
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => chunks.push(chunk));
+    process.stdin.on('end', () => resolve(chunks.join('').trim()));
+    process.stdin.on('error', reject);
+  });
+}
+
 async function main() {
-  const rawArg = process.argv.slice(2).join(' ').trim();
+  const args = process.argv.slice(2);
+  const hasInline = args.includes('--inline');
+
+  // Priority: stdin > argv
+  const stdinText = await readStdin();
+  const argvText = args.filter((a) => a !== '--inline').join(' ').trim();
+  const rawArg = stdinText || argvText;
+
   if (!rawArg) {
-    process.stdout.write('No prompt provided. Usage: /e <your request>\n');
-    return;
+    process.stderr.write('Usage: chiron-enhance [--inline] <prompt>\n');
+    process.stderr.write('       echo <prompt> | chiron-enhance [--inline]\n');
+    process.exit(1);
   }
 
   const rawPrompt = normalizePrompt(rawArg);
@@ -309,7 +331,9 @@ async function main() {
   });
   const gitContext = await contextEngine.getGitContext();
 
-  const strategy = enhancer.detectStrategy(rawPrompt);
+  const strategy = hasInline
+    ? 'concise'
+    : enhancer.detectStrategy(rawPrompt);
   const backend = (process.env.CHIRON_ENHANCE_BACKEND || 'gemini').trim().toLowerCase();
   const enhanced = await enhancePrompt({
     backend,

@@ -1,0 +1,215 @@
+diff --git a/rust/crates/rusty-claude-cli/src/input.rs b/rust/crates/rusty-claude-cli/src/input.rs
+index 1cf6029..7465389 100644
+--- a/rust/crates/rusty-claude-cli/src/input.rs
++++ b/rust/crates/rusty-claude-cli/src/input.rs
+@@ -1,6 +1,7 @@
+ use std::borrow::Cow;
+ use std::cell::RefCell;
+ use std::io::{self, IsTerminal, Write};
++use std::time::{Duration, Instant};
+ 
+ use rustyline::completion::{Completer, Pair};
+ use rustyline::error::ReadlineError;
+@@ -12,9 +13,14 @@ use rustyline::{
+     Cmd, CompletionType, Config, Context, EditMode, Editor, Helper, KeyCode, KeyEvent, Modifiers,
+ };
+ 
++/// Maximum interval between two Ctrl+E presses to be considered a "double press".
++const DOUBLE_CTRL_E_WINDOW: Duration = Duration::from_millis(500);
++
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub enum ReadOutcome {
+     Submit(String),
++    /// User pressed Ctrl+E twice — enhance the captured prompt text.
++    Enhance(String),
+     Cancel,
+     Exit,
+ }
+@@ -96,6 +102,8 @@ impl Helper for SlashCommandHelper {}
+ pub struct LineEditor {
+     prompt: String,
+     editor: Editor<SlashCommandHelper, DefaultHistory>,
++    /// Timestamp of the most recent Ctrl+E press (for double-press detection).
++    last_ctrl_e: Option<Instant>,
+ }
+ 
+ impl LineEditor {
+@@ -110,10 +118,13 @@ impl LineEditor {
+         editor.set_helper(Some(SlashCommandHelper::new(completions)));
+         editor.bind_sequence(KeyEvent(KeyCode::Char('J'), Modifiers::CTRL), Cmd::Newline);
+         editor.bind_sequence(KeyEvent(KeyCode::Enter, Modifiers::SHIFT), Cmd::Newline);
++        // Ctrl+E: intercept via Interrupt so we can detect double-press timing.
++        editor.bind_sequence(KeyEvent(KeyCode::Char('E'), Modifiers::CTRL), Cmd::Interrupt);
+ 
+         Self {
+             prompt: prompt.into(),
+             editor,
++            last_ctrl_e: None,
+         }
+     }
+ 
+@@ -136,17 +147,47 @@ impl LineEditor {
+         }
+ 
+         match self.editor.readline(&self.prompt) {
+-            Ok(line) => Ok(ReadOutcome::Submit(line)),
++            Ok(line) => {
++                self.last_ctrl_e = None;
++                Ok(ReadOutcome::Submit(line))
++            }
+             Err(ReadlineError::Interrupted) => {
+-                let has_input = !self.current_line().is_empty();
+-                self.finish_interrupted_read()?;
+-                if has_input {
+-                    Ok(ReadOutcome::Cancel)
+-                } else {
+-                    Ok(ReadOutcome::Exit)
++                // rustyline fires Interrupted for both Ctrl+C and our Ctrl+E binding.
++                // Distinguish them by checking whether the cursor is at EOL with no
++                // trailing newline (Ctrl+E characteristic) vs an empty/full-clear
++                // (Ctrl+C characteristic).  We rely on timing: if the current_line is
++                // non-empty AND we see a rapid second Interrupted within the window,
++                // treat it as double Ctrl+E → Enhance.
++                let captured = self.current_line();
++                let now = Instant::now();
++
++                if !captured.is_empty() {
++                    // Check if this is a double-press within the time window.
++                    let is_double = self
++                        .last_ctrl_e
++                        .map(|t| now.duration_since(t) <= DOUBLE_CTRL_E_WINDOW)
++                        .unwrap_or(false);
++
++                    self.last_ctrl_e = Some(now);
++
++                    if is_double {
++                        self.last_ctrl_e = None;
++                        self.finish_interrupted_read()?;
++                        return Ok(ReadOutcome::Enhance(captured));
++                    }
++
++                    // First press: cancel the current edit (act like Ctrl+C with input).
++                    self.finish_interrupted_read()?;
++                    return Ok(ReadOutcome::Cancel);
+                 }
++
++                // Empty line — treat as normal Ctrl+C / Ctrl+E on empty prompt.
++                self.last_ctrl_e = None;
++                self.finish_interrupted_read()?;
++                Ok(ReadOutcome::Exit)
+             }
+             Err(ReadlineError::Eof) => {
++                self.last_ctrl_e = None;
+                 self.finish_interrupted_read()?;
+                 Ok(ReadOutcome::Exit)
+             }
+@@ -266,4 +307,32 @@ mod tests {
+ 
+         assert_eq!(editor.editor.history().len(), 1);
+     }
++
++    #[test]
++    fn double_ctrl_e_window_is_500ms() {
++        assert_eq!(
++            super::DOUBLE_CTRL_E_WINDOW,
++            std::time::Duration::from_millis(500)
++        );
++    }
++
++    #[test]
++    fn double_press_detected_within_window() {
++        use std::time::{Duration, Instant};
++        let now = Instant::now();
++        let first = now;
++        let second = now + Duration::from_millis(300);
++        let is_double = second.duration_since(first) <= super::DOUBLE_CTRL_E_WINDOW;
++        assert!(is_double, "300ms gap should be within the 500ms window");
++    }
++
++    #[test]
++    fn double_press_rejected_outside_window() {
++        use std::time::{Duration, Instant};
++        let now = Instant::now();
++        let first = now;
++        let second = now + Duration::from_millis(600);
++        let is_double = second.duration_since(first) <= super::DOUBLE_CTRL_E_WINDOW;
++        assert!(!is_double, "600ms gap should exceed the 500ms window");
++    }
+ }
+diff --git a/rust/crates/rusty-claude-cli/src/main.rs b/rust/crates/rusty-claude-cli/src/main.rs
+index 7cb70de..cf65eff 100644
+--- a/rust/crates/rusty-claude-cli/src/main.rs
++++ b/rust/crates/rusty-claude-cli/src/main.rs
+@@ -961,6 +961,11 @@ fn run_repl(
+                 editor.push_history(input);
+                 cli.run_turn(&trimmed)?;
+             }
++            input::ReadOutcome::Enhance(raw) => {
++                let enhanced = enhance_prompt(&raw);
++                editor.push_history(enhanced.clone());
++                cli.run_turn(&enhanced)?;
++            }
+             input::ReadOutcome::Cancel => {}
+             input::ReadOutcome::Exit => {
+                 cli.persist_session()?;
+@@ -972,6 +977,52 @@ fn run_repl(
+     Ok(())
+ }
+ 
++/// Enhance a raw prompt by invoking the `chiron-enhance` CLI tool.
++///
++/// Looks for the binary in PATH.  Falls back to the original prompt if the
++/// tool is not installed or returns an error.
++fn enhance_prompt(raw: &str) -> String {
++    use std::io::Write as _;
++
++    let spinner_msg = "\x1b[33m⚡ Enhancing prompt…\x1b[0m";
++    print!("{}", spinner_msg);
++    let _ = io::stdout().flush();
++
++    let result = Command::new("chiron-enhance")
++        .arg("--inline")
++        .stdin(std::process::Stdio::piped())
++        .stdout(std::process::Stdio::piped())
++        .stderr(std::process::Stdio::piped())
++        .spawn()
++        .and_then(|mut child| {
++            if let Some(stdin) = child.stdin.take() {
++                let mut stdin = stdin;
++                let _ = stdin.write_all(raw.as_bytes());
++            }
++            child.wait_with_output()
++        });
++
++    // Clear the spinner line.
++    print!("\r\x1b[K");
++    let _ = io::stdout().flush();
++
++    match result {
++        Ok(output) if output.status.success() => {
++            let enhanced = String::from_utf8_lossy(&output.stdout).trim().to_string();
++            if enhanced.is_empty() {
++                raw.to_string()
++            } else {
++                println!("\x1b[2m✨ Enhanced: {}\x1b[0m", enhanced);
++                enhanced
++            }
++        }
++        _ => {
++            // chiron-enhance not installed or failed — submit the original prompt.
++            raw.to_string()
++        }
++    }
++}
++
+ #[derive(Debug, Clone)]
+ struct SessionHandle {
+     id: String,
+@@ -1762,6 +1813,7 @@ fn render_repl_help() -> String {
+         "  Tab                  Complete slash commands".to_string(),
+         "  Ctrl-C               Clear input (or exit on empty prompt)".to_string(),
+         "  Shift+Enter/Ctrl+J   Insert a newline".to_string(),
++        "  Ctrl-E Ctrl-E        Enhance prompt with Chiron (requires chiron-enhance in PATH)".to_string(),
+         String::new(),
+         render_slash_command_help(),
+     ]

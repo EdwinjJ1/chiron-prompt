@@ -4,7 +4,8 @@
     "description": "Chiron Prompt Enhancer — MCP Server & CLI for intelligent prompt enhancement with codebase context",
     "type": "module",
     "bin": {
-        "chiron": "./bin/chiron.mjs"
+        "chiron": "./bin/chiron.mjs",
+        "chiron-enhance": "./bin/chiron-enhance.mjs"
     },
     "main": "src/server.mjs",
     "scripts": {
