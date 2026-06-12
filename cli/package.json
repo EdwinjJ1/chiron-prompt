@@ -10,7 +10,8 @@
     "main": "src/server.mjs",
     "scripts": {
         "start": "node src/server.mjs",
-        "serve": "node src/server.mjs"
+        "serve": "node src/server.mjs",
+        "test": "node --test"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.12.1"

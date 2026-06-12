@@ -115,7 +115,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         switch (name) {
             // ── enhance_prompt ──
             case 'enhance_prompt': {
-                const prompt = args.prompt;
+                const prompt = args?.prompt;
+                if (typeof prompt !== 'string' || !prompt.trim()) {
+                    throw new Error('enhance_prompt requires a non-empty "prompt" string');
+                }
                 const strategy = args.strategy || 'auto';
                 const includeSnippets = args.include_snippets !== false;
 
@@ -161,6 +164,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
             // ── find_relevant_code ──
             case 'find_relevant_code': {
+                if (typeof args?.query !== 'string' || !args.query.trim()) {
+                    throw new Error('find_relevant_code requires a non-empty "query" string');
+                }
                 const results = await engine.findRelevantFiles(args.query, {
                     maxResults: args?.max_results ?? 10,
                     includeContent: args?.include_content !== false,

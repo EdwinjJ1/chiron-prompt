@@ -5,13 +5,15 @@
  */
 
 // ── Strategy detection patterns ──────────────────────────
+// NOTE: \b word boundaries do not work next to CJK characters (they are not
+// \w in JS regex), so Chinese keywords are matched without boundaries.
 const STRATEGY_PATTERNS = {
-    educational: /\b(explain|teach|learn|understand|tutorial|概念|教学|学习|理解|解释|原理)\b/i,
-    analytical: /\b(analyz|evaluat|compar|assess|review|audit|分析|评估|比较|审查|审计)\b/i,
-    action: /\b(setup|install|deploy|config|implement|migrate|upgrade|搭建|安装|部署|配置|实现|迁移|how.?to)\b/i,
-    creative: /\b(idea|brain.?storm|innovat|design|prototype|探索|创意|想法|头脑风暴|设计方案)\b/i,
-    professional: /\b(business|report|presentation|executive|proposal|商业|报告|演示|汇报|提案)\b/i,
-    concise: /\b(summar|brief|tldr|quick|简洁|总结|概括|简述|精简)\b/i,
+    educational: /\b(explain|teach|learn|understand|tutorial)\b|概念|教学|学习|理解|解释|原理/i,
+    analytical: /\b(analyz\w*|evaluat\w*|compar\w*|assess|review|audit)\b|分析|评估|比较|审查|审计/i,
+    action: /\b(setup|install|deploy|config\w*|implement|migrate|upgrade|how.?to)\b|搭建|安装|部署|配置|实现|迁移/i,
+    creative: /\b(idea|brain.?storm|innovat\w*|design|prototype)\b|探索|创意|想法|头脑风暴|设计方案/i,
+    professional: /\b(business|report|presentation|executive|proposal)\b|商业|报告|演示|汇报|提案/i,
+    concise: /\b(summar\w*|brief|tldr|quick)\b|简洁|总结|概括|简述|精简/i,
 };
 
 // ── Strategy-specific enhancement frameworks ─────────────
