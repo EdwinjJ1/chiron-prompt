@@ -243,7 +243,7 @@ The implementation behind this flow lives in:
 | Manual patch | `git apply` the `.patch` file yourself | [cli/patches/gemini-cli/README.md](cli/patches/gemini-cli/README.md) |
 | Claude Code `/e` | Repo-aware slash command in Claude Code | [.claude/commands/e.md](.claude/commands/e.md) |
 | OpenAI Codex TUI | Double `Ctrl+E` enhance-in-place for Codex open-source clone | [cli/patches/codex/](cli/patches/codex/) |
-| Claw Code (Rust) | Double `Ctrl+E` enhance-in-place for [claw-code](https://github.com/instructkr/claw-code) | [integrations/claw-code/](integrations/claw-code/) |
+| Claw Code (Rust) | `Ctrl+E` enhance + pre-fill for [claw-code](https://github.com/instructkr/claw-code) | [integrations/claw-code/](integrations/claw-code/) |
 | Skill only | Reusable prompt-enhancement behavior without CLI wiring | [SKILL.md](SKILL.md) |
 
 ## Repository Layout
