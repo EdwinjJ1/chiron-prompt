@@ -23,3 +23,6 @@ jobs:
           node --check cli/bin/chiron-enhance.mjs
           node --check cli/src/enhancer.mjs
           node --check cli/src/context-engine.mjs
+
+      - name: Run tests
+        run: npm test --prefix cli

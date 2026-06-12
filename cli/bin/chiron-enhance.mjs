@@ -31,6 +31,9 @@ function spawnWithStdin(cmd, args, input, options) {
       }
       resolve({ stdout, stderr });
     });
+    // If the child exits before consuming stdin, write() raises EPIPE,
+    // which would crash the process without this handler.
+    child.stdin.on('error', () => {});
     child.stdin.write(input);
     child.stdin.end();
   });
@@ -78,10 +81,10 @@ function extractExistingPrompt(value) {
 
 function normalizePrompt(value) {
   let result = extractExistingPrompt(value.trim());
-  while (/^task:\s*/i.test(result)) {
-    result = result.replace(/^task:\s*/i, '').trim();
+  const prefix = /^(?:task\s*[:：]|任务\s*[:：])\s*/i;
+  while (prefix.test(result)) {
+    result = result.replace(prefix, '').trim();
   }
-  result = result.replace(/^任务：\s*/i, '').trim();
   return result;
 }
 
@@ -265,10 +268,14 @@ function readStdin() {
 async function main() {
   const args = process.argv.slice(2);
 
-  // Priority: stdin > argv
-  const stdinText = await readStdin();
-  const argvText = args.join(' ').trim();
-  const rawArg = stdinText || argvText;
+  // `--inline` is a legacy flag some integrations (claw-code) still pass;
+  // it must never leak into the prompt text.
+  const argvText = args.filter((a) => a !== '--inline').join(' ').trim();
+  // argv wins when present; stdin is only consumed when no argv prompt is
+  // given. Waiting on stdin while holding an argv prompt hangs forever when
+  // the host CLI keeps the pipe open without writing (gemini overlay's
+  // execFile invocation), freezing Ctrl+E at the enhancing indicator.
+  const rawArg = argvText || (await readStdin());
 
   if (!rawArg) {
     process.stderr.write('Usage: chiron-enhance <prompt>\n');

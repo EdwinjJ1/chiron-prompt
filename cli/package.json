@@ -6,6 +6,9 @@
     "bin": {
         "chiron-enhance": "./bin/chiron-enhance.mjs"
     },
+    "scripts": {
+        "test": "node --test"
+    },
     "dependencies": {},
     "engines": {
         "node": ">=18.0.0"
