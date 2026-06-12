@@ -313,15 +313,17 @@ Rollback: `rm -f ~/.local/bin/gemini && rm -rf ~/.chiron && hash -r`
 Chiron directly supports enhancing prompts in the open-source [OpenAI Codex](https://github.com/openai/codex) terminal client with the same double `Ctrl+E` experience.
 
 ```bash
-git clone https://github.com/openai/codex.git /tmp/openai-codex
-node cli/bin/install-codex-source-enhance.mjs --codex-root /tmp/openai-codex
-cd /tmp/openai-codex/codex-rs
-cargo build --bin codex
-export CHIRON_ENHANCER_PATH=~/.chiron/cli/bin/chiron-enhance.mjs
-cargo run --bin codex
+node cli/bin/install-codex-overlay.mjs
 ```
 
-> Most users should start with **Option A** or **Option D**.
+The installer will automatically:
+1. Download the latest codex source
+2. Apply the double `Ctrl+E` patch
+3. Compile the native binary to `~/.chiron/bin/codex`
+4. Create a wrapper script at `~/.local/bin/codex`
+5. Clean up the source files so no temporary code is left behind
+
+As long as `~/.local/bin` is in your `PATH`, you can simply run `codex` to enjoy the experience.
 
 ### Option G: Claw Code (Rust CLI)
 

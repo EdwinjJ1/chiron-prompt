@@ -88,80 +88,78 @@ function normalizePrompt(value) {
   return result;
 }
 
-function formatProjectContext(projectContext) {
-  const lines = [];
-  if (projectContext?.framework) {
-    lines.push(`- Framework: ${projectContext.framework}`);
-  }
-  if (projectContext?.language) {
-    lines.push(`- Language: ${projectContext.language}`);
-  }
-  if (projectContext?.techStack?.length) {
-    lines.push(`- Stack: ${projectContext.techStack.join(', ')}`);
-  }
+/**
+ * Build a natural-language context paragraph from repo scan results.
+ * Avoids labeled key-value format — produces prose that reads like
+ * a dev describing their project, so Gemini outputs in the same register.
+ */
+function buildNaturalContext({ projectContext, relevantFiles, gitContext }) {
+  const parts = [];
 
+  // Project identity
+  const stack = [projectContext?.framework, projectContext?.language]
+    .filter(Boolean)
+    .join('/');
   const pkg = projectContext?.keyFiles?.['package.json'];
-  if (pkg?.name) {
-    lines.push(`- Package: ${pkg.name}${pkg.version ? `@${pkg.version}` : ''}`);
+  const pkgName = pkg?.name ? ` (${pkg.name})` : '';
+  if (stack) {
+    parts.push(`This is a ${stack} project${pkgName}.`);
+  } else if (pkgName) {
+    parts.push(`Project: ${pkgName.slice(2, -1)}.`);
   }
 
-  return lines.join('\n');
-}
-
-function formatRelevantFiles(relevantFiles) {
-  if (!relevantFiles?.length) {
-    return '- No relevant files found';
+  // Tech stack extras
+  if (projectContext?.techStack?.length > 0) {
+    const extras = projectContext.techStack
+      .filter((t) => t !== projectContext.framework && t !== projectContext.language)
+      .slice(0, 5);
+    if (extras.length > 0) {
+      parts.push(`Stack includes: ${extras.join(', ')}.`);
+    }
   }
 
-  return relevantFiles
-    .slice(0, 4)
-    .map((file) => {
-      const snippet = file.content?.trim()
-        ? `\nSnippet:\n\`\`\`\n${file.content.trim()}\n\`\`\``
+  // Git branch
+  if (gitContext?.branch) {
+    parts.push(`Current branch: ${gitContext.branch}.`);
+  }
+
+  // Relevant files — name them naturally, include snippet if short enough
+  if (relevantFiles?.length > 0) {
+    const fileDescs = relevantFiles.slice(0, 4).map((f) => {
+      const snippet = f.content?.trim()
+        ? ` — snippet:\n\`\`\`\n${f.content.trim().slice(0, 400)}\n\`\`\``
         : '';
-      return `- ${file.path} (score ${file.score})${snippet}`;
-    })
-    .join('\n\n');
+      return `${f.path}${snippet}`;
+    });
+    parts.push(`Relevant files:\n${fileDescs.join('\n')}`);
+  }
+
+  return parts.join('\n');
 }
 
-function buildGeminiEnhancementPrompt({
-  rawPrompt,
-  strategy,
-  projectContext,
-  relevantFiles,
-  gitContext,
-}) {
-  const branchLine = gitContext?.branch ? `- Branch: ${gitContext.branch}` : '- Branch: unknown';
+function buildGeminiEnhancementPrompt({ rawPrompt, projectContext, relevantFiles, gitContext }) {
+  const context = buildNaturalContext({ projectContext, relevantFiles, gitContext });
 
-  return `
-You are Chiron, an in-place prompt enhancer running inside Gemini CLI.
+  return `You are an expert developer working inside a CLI tool. Your job is to rewrite a vague or underspecified request into a precise, natural prompt that another developer (or AI) could execute immediately without asking follow-up questions.
 
-Your job is to rewrite the user's raw request into a better prompt for Gemini to execute next.
-Use the repository context below to make the request more specific and more useful.
+Step 1: Infer what type of task this is and what you would need to know about this specific repo to do it well. (Do this silently — do not output this step.)
+
+Step 2: Use the repo context below to answer those questions. (Do this silently — do not output this step.)
+
+Step 3: Output only the rewritten prompt — one or two natural sentences. Sound like a senior developer who already knows this codebase typing a request. Be concrete: name the actual files, patterns, commands, and constraints that matter for this specific task.
 
 Rules:
-- Return only the final rewritten prompt.
-- Do not explain what you changed.
-- Do not use headings like "Task:", "Project stack:", "Focus areas:", or markdown sections.
-- Do not output code fences.
-- Keep the same language as the user's request.
-- Sound like a stronger user prompt, not like a report template.
-- Be concrete: mention relevant files, constraints, risks, and likely focus areas when they matter.
-- Stay concise enough to fit naturally in a CLI input box.
-- If the request is already specific, refine it lightly instead of bloating it.
+- Use the same language as the user's request (Chinese in → Chinese out, English in → English out)
+- If the request is already specific enough, refine it lightly instead of bloating it
+- Never output headers like "Task:", "Strategy:", "Context:", "Step 1:", or similar
+- Never explain what you changed or why
+- No bullet points, no markdown sections, no code fences around your output
 
-Detected strategy: ${strategy}
+Repo context:
+${context}
 
 User request:
-${rawPrompt}
-
-Project context:
-${formatProjectContext(projectContext)}
-${branchLine}
-
-Relevant files and snippets:
-${formatRelevantFiles(relevantFiles)}
-`.trim();
+${rawPrompt}`.trim();
 }
 
 function sanitizeGeminiResponse(value) {
@@ -177,36 +175,16 @@ function sanitizeGeminiResponse(value) {
   return result;
 }
 
-function enhanceLocally({
-  rawPrompt,
-  strategy,
-  projectContext,
-  relevantFiles,
-  gitContext,
-  enhancer,
-}) {
-  return enhancer.enhanceInline({
-    rawPrompt,
-    strategy,
-    projectContext,
-    relevantFiles,
-    gitContext,
-  });
+function enhanceLocally({ rawPrompt, enhancer }) {
+  return enhancer.enhanceInline(rawPrompt);
 }
 
-async function enhanceWithGemini({
-  rawPrompt,
-  strategy,
-  projectContext,
-  relevantFiles,
-  gitContext,
-}) {
+async function enhanceWithGemini({ rawPrompt, projectContext, relevantFiles, gitContext }) {
   const geminiCmd = process.env.CHIRON_GEMINI_CMD || 'gemini';
   const geminiModel = process.env.CHIRON_ENHANCE_MODEL || 'flash';
   const timeoutMs = Number(process.env.CHIRON_ENHANCE_TIMEOUT_MS || 30000);
   const prompt = buildGeminiEnhancementPrompt({
     rawPrompt,
-    strategy,
     projectContext,
     relevantFiles,
     gitContext,
@@ -260,33 +238,12 @@ async function enhanceWithGemini({
   }
 }
 
-async function enhancePrompt({
-  backend,
-  rawPrompt,
-  strategy,
-  projectContext,
-  relevantFiles,
-  gitContext,
-  enhancer,
-}) {
+async function enhancePrompt({ backend, rawPrompt, projectContext, relevantFiles, gitContext, enhancer }) {
   switch (backend) {
     case 'local':
-      return enhanceLocally({
-        rawPrompt,
-        strategy,
-        projectContext,
-        relevantFiles,
-        gitContext,
-        enhancer,
-      });
+      return enhanceLocally({ rawPrompt, enhancer });
     case 'gemini':
-      return enhanceWithGemini({
-        rawPrompt,
-        strategy,
-        projectContext,
-        relevantFiles,
-        gitContext,
-      });
+      return enhanceWithGemini({ rawPrompt, projectContext, relevantFiles, gitContext });
     default:
       throw new Error(
         `Unsupported CHIRON_ENHANCE_BACKEND: ${backend}. Expected "gemini" or "local".`,
@@ -310,17 +267,19 @@ function readStdin() {
 
 async function main() {
   const args = process.argv.slice(2);
-  const hasInline = args.includes('--inline');
 
-  // argv wins when present; stdin is only consumed when no argv prompt is
-  // given. Waiting on stdin while holding an argv prompt can hang forever
-  // when the parent keeps the pipe open without writing (agent callers).
+  // `--inline` is a legacy flag some integrations (claw-code) still pass;
+  // it must never leak into the prompt text.
   const argvText = args.filter((a) => a !== '--inline').join(' ').trim();
+  // argv wins when present; stdin is only consumed when no argv prompt is
+  // given. Waiting on stdin while holding an argv prompt hangs forever when
+  // the host CLI keeps the pipe open without writing (gemini overlay's
+  // execFile invocation), freezing Ctrl+E at the enhancing indicator.
   const rawArg = argvText || (await readStdin());
 
   if (!rawArg) {
-    process.stderr.write('Usage: chiron-enhance [--inline] <prompt>\n');
-    process.stderr.write('       echo <prompt> | chiron-enhance [--inline]\n');
+    process.stderr.write('Usage: chiron-enhance <prompt>\n');
+    process.stderr.write('       echo <prompt> | chiron-enhance\n');
     process.exit(1);
   }
 
@@ -328,21 +287,20 @@ async function main() {
   const contextEngine = new ContextEngine(process.cwd());
   const enhancer = new Enhancer();
 
+  const taskType = enhancer.detectTaskType(rawPrompt);
   const projectContext = await contextEngine.scanProject(3);
   const relevantFiles = await contextEngine.findRelevantFiles(rawPrompt, {
     maxResults: 4,
     includeContent: true,
+    taskType,
   });
   const gitContext = await contextEngine.getGitContext();
 
-  const strategy = hasInline
-    ? 'concise'
-    : enhancer.detectStrategy(rawPrompt);
+
   const backend = (process.env.CHIRON_ENHANCE_BACKEND || 'gemini').trim().toLowerCase();
   const enhanced = await enhancePrompt({
     backend,
     rawPrompt,
-    strategy,
     projectContext,
     relevantFiles,
     gitContext,

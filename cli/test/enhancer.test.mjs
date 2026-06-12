@@ -4,46 +4,34 @@ import { Enhancer } from '../src/enhancer.mjs';
 
 const enhancer = new Enhancer();
 
-test('detectStrategy matches English whole words', () => {
-    assert.equal(enhancer.detectStrategy('explain this function'), 'educational');
-    assert.equal(enhancer.detectStrategy('review the auth module'), 'analytical');
-    assert.equal(enhancer.detectStrategy('deploy the service'), 'action');
+test('detectTaskType matches English whole words', () => {
+    assert.equal(enhancer.detectTaskType('write a unit test for auth'), 'test');
+    assert.equal(enhancer.detectTaskType('fix the broken redirect'), 'debug');
+    assert.equal(enhancer.detectTaskType('refactor the cache layer'), 'refactor');
+    assert.equal(enhancer.detectTaskType('review this module'), 'review');
+    assert.equal(enhancer.detectTaskType('explain the session flow'), 'explain');
 });
 
-test('detectStrategy matches English stem variants (regression: trailing \\b)', () => {
-    assert.equal(enhancer.detectStrategy('analyze the cache layer'), 'analytical');
-    assert.equal(enhancer.detectStrategy('summarize this file'), 'concise');
-    assert.equal(enhancer.detectStrategy('configure the linter'), 'action');
+test('detectTaskType matches English word variants (regression: trailing \\b on stems)', () => {
+    assert.equal(enhancer.detectTaskType('the request keeps failing'), 'debug');
+    assert.equal(enhancer.detectTaskType('app crashes on startup'), 'debug');
+    assert.equal(enhancer.detectTaskType('reviewing the changes'), 'review');
 });
 
-test('detectStrategy matches Chinese keywords (regression: \\b vs CJK)', () => {
-    assert.equal(enhancer.detectStrategy('解释一下这个函数'), 'educational');
-    assert.equal(enhancer.detectStrategy('分析这个性能问题'), 'analytical');
-    assert.equal(enhancer.detectStrategy('部署到生产环境'), 'action');
-    assert.equal(enhancer.detectStrategy('总结这次改动'), 'concise');
+test('detectTaskType matches Chinese keywords (regression: \\b vs CJK)', () => {
+    assert.equal(enhancer.detectTaskType('给登录写测试'), 'test');
+    assert.equal(enhancer.detectTaskType('修复登录跳转'), 'debug');
+    assert.equal(enhancer.detectTaskType('重构缓存模块'), 'refactor');
+    assert.equal(enhancer.detectTaskType('解释一下这个函数'), 'explain');
 });
 
-test('detectStrategy falls back to detailed', () => {
-    assert.equal(enhancer.detectStrategy('fix login bug'), 'detailed');
-});
-
-test('enhance returns a full specification', () => {
-    const out = enhancer.enhance({
-        rawPrompt: 'fix login bug',
-        strategy: 'detailed',
-        projectContext: { techStack: ['Node.js'], language: 'node' },
-        relevantFiles: [{ path: 'src/auth.ts', score: 12, lines: 80 }],
-        gitContext: { branch: 'main', status: [], commits: [] },
-    });
-    assert.match(out, /Original Request/);
-    assert.match(out, /fix login bug/);
-    assert.match(out, /src\/auth\.ts/);
-    assert.match(out, /Execution Guidance/);
+test('detectTaskType falls back to general', () => {
+    assert.equal(enhancer.detectTaskType('login flow'), 'general');
 });
 
 test('enhanceInline keeps prompt intact and adds terminal punctuation', () => {
-    assert.equal(enhancer.enhanceInline({ rawPrompt: 'fix login bug' }), 'fix login bug.');
-    assert.equal(enhancer.enhanceInline({ rawPrompt: '修复登录问题' }), '修复登录问题。');
-    assert.equal(enhancer.enhanceInline({ rawPrompt: 'done already.' }), 'done already.');
-    assert.equal(enhancer.enhanceInline({ rawPrompt: '  ' }), '');
+    assert.equal(enhancer.enhanceInline('fix login bug'), 'fix login bug.');
+    assert.equal(enhancer.enhanceInline('修复登录问题'), '修复登录问题。');
+    assert.equal(enhancer.enhanceInline('done already.'), 'done already.');
+    assert.equal(enhancer.enhanceInline('  '), '');
 });
